@@ -1,0 +1,2513 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'; worker-src 'self'; manifest-src 'self'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Market Place Épicerie — Caisse</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f7a4d">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Caisse MP">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#ffffff; --ink:#1a1d21; --muted:#6b7280;
+    --line:#e5e7eb; --brand:#1f7a4d; --brand-dark:#155c39; --brand-soft:#e7f3ec;
+    --danger:#c0392b; --danger-soft:#fbeae8; --accent:#2563eb; --warn:#b45309;
+    --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  }
+  header{
+    background:var(--card); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px; padding:10px 14px; flex-shrink:0;
+  }
+  header h1{font-size:17px; margin:0; font-weight:700; flex:1}
+  header .logo{min-width:36px;height:30px;padding:0 8px;border-radius:8px;background:#141019;border:1px solid #c9a15a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;letter-spacing:-1px;text-shadow:0 0 5px #ff1aa1,0 0 11px #ff2aa6;font-family:'Arial Black','Arial',system-ui,sans-serif}
+  .tabs{display:flex; gap:6px}
+  .tab{
+    border:none; background:transparent; color:var(--muted); font-weight:600; font-size:14px;
+    padding:8px 12px; border-radius:10px; cursor:pointer;
+  }
+  .tab.active{background:var(--brand-soft); color:var(--brand-dark)}
+  main{flex:1; overflow:hidden; position:relative}
+  .view{position:absolute; inset:0; display:none; overflow:auto; background:var(--bg)}
+  .view.active{display:block}
+
+  /* CAISSE */
+  #caisse.active{display:grid; grid-template-columns:1fr 360px; gap:0; height:100%}
+  .grid-wrap{padding:12px; overflow:auto}
+  .search{width:100%; padding:11px 14px; border:1px solid var(--line); border-radius:12px; font-size:15px; margin-bottom:12px; background:var(--card)}
+  .cats{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px}
+  .cat{border:1px solid var(--line); background:var(--card); color:var(--muted); padding:6px 12px; border-radius:20px; font-size:13px; cursor:pointer; font-weight:600}
+  .cat.active{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .products{display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px}
+  .pcard{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:12px 10px;
+    cursor:pointer; text-align:left; transition:transform .05s; display:flex; flex-direction:column; gap:6px; min-height:84px;
+  }
+  .pcard:active{transform:scale(.97)}
+  .pcard .pname{font-weight:600; font-size:14px; line-height:1.25}
+  .pcard .pprice{color:var(--brand-dark); font-weight:700; font-size:15px; margin-top:auto}
+  .empty{color:var(--muted); text-align:center; padding:40px 20px; font-size:14px}
+
+  /* TICKET */
+  .ticket{background:var(--card); border-left:1px solid var(--line); display:flex; flex-direction:column; height:100%}
+  .ticket h2{font-size:15px; margin:0; padding:14px 16px 8px}
+  .lines{flex:1; overflow:auto; padding:0 10px}
+  .line{display:flex; align-items:center; gap:8px; padding:8px 6px; border-bottom:1px solid var(--line)}
+  .line .ln{flex:1; min-width:0}
+  .line .lname{font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .line .lunit{font-size:12px; color:var(--muted)}
+  .qty{display:flex; align-items:center; gap:6px}
+  .qbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+  .qn{min-width:24px;text-align:center;font-weight:700;font-size:15px}
+  .lsum{width:66px;text-align:right;font-weight:700;font-size:14px}
+  .totbar{border-top:2px solid var(--ink); padding:12px 16px}
+  .totrow{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px}
+  .totrow .tl{font-size:15px;color:var(--muted);font-weight:600}
+  .totrow .tv{font-size:28px;font-weight:800}
+  .pay-actions{display:flex; gap:8px}
+  .btn{border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
+  .btn-pay{flex:1;background:var(--brand);color:#fff}
+  .btn-pay:disabled{background:#b7c3bc;cursor:not-allowed}
+  .btn-clear{background:var(--danger-soft);color:var(--danger);padding:14px 16px}
+
+  /* PRODUITS */
+  .pad{padding:16px; max-width:760px; margin:0 auto}
+  .sec-title{font-size:18px;font-weight:700;margin:4px 0 14px}
+  .prow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .prow .pi{flex:1}
+  .prow .pi b{font-size:15px}
+  .prow .pi span{display:block;color:var(--muted);font-size:13px}
+  .prow .pp{font-weight:700;color:var(--brand-dark);margin-right:4px}
+  .icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+  .icon-btn.del{color:var(--danger)}
+  .form-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:18px;box-shadow:var(--shadow)}
+  .form-card h3{margin:0 0 12px;font-size:15px}
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px;font-weight:600}
+  .field input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px}
+  .form-row{display:flex;gap:10px}
+  .form-row .field{flex:1}
+  .add-btn{background:var(--brand);color:#fff;border:none;border-radius:11px;padding:12px 18px;font-weight:700;font-size:15px;cursor:pointer;width:100%}
+
+  /* JOURNÉE */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .stat .sv{font-size:24px;font-weight:800}
+  .stat .sl{color:var(--muted);font-size:13px;font-weight:600;margin-top:2px}
+  .period{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:6px}
+  .per-btn{flex:1;border:none;background:transparent;color:var(--muted);font-weight:700;font-size:14px;padding:9px;border-radius:9px;cursor:pointer}
+  .per-btn.active{background:var(--brand);color:#fff}
+  .day-block{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .day-block h4{margin:0 0 10px;font-size:14px;display:flex;align-items:center;gap:6px}
+  .db-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .db-row:last-child{border-bottom:none}
+  .db-row .dbn{color:var(--ink);font-weight:600}
+  .db-row .dbs{color:var(--muted);font-size:12px}
+  .db-row b{font-weight:800}
+  .db-rank{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--brand-soft);color:var(--brand-dark);align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-right:8px}
+  .sale{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+  .sale .sh{display:flex;justify-content:space-between;font-weight:700;font-size:15px}
+  .sale .sd{color:var(--ink);font-size:13px;margin-top:6px;line-height:1.5}
+  .sale .sf{color:var(--muted);font-size:12px;margin-top:6px;display:flex;justify-content:space-between}
+  .emp-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
+  .emp-col{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+  .emp-col-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;background:var(--brand-soft);border-bottom:1px solid var(--line)}
+  .emp-col-h .ecn{font-weight:800;font-size:14px;color:var(--brand-dark)}
+  .emp-col-h .ect{font-size:12px;font-weight:700;color:var(--brand-dark);white-space:nowrap;text-align:right}
+  .emp-col-body{padding:8px;display:flex;flex-direction:column;gap:8px;max-height:440px;overflow:auto}
+  .tk{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}
+  .tk-h{display:flex;justify-content:space-between;font-weight:700;font-size:13px}
+  .tk-h .tkt{color:var(--muted)}
+  .tk-d{font-size:12px;color:var(--ink);margin-top:4px;line-height:1.45}
+  .tk-f{font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
+  .emp-col-empty{padding:14px;text-align:center;color:var(--muted);font-size:12px}
+  .an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  .an-select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:var(--card);margin-bottom:12px}
+  .bar-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .bar-row:last-child{border-bottom:none}
+  .bar-name{flex:0 0 42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-track{flex:1;height:10px;background:var(--bg);border-radius:6px;overflow:hidden}
+  .bar-fill{height:100%;background:var(--brand);border-radius:6px}
+  .bar-fill.lo{background:var(--warn)}
+  .bar-val{flex:0 0 auto;font-weight:700;font-variant-numeric:tabular-nums;min-width:62px;text-align:right}
+  .insight{background:var(--brand-soft);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.5;color:var(--ink)}
+  .insight b{color:var(--brand-dark)}
+  .insight.warn{background:#fff7ed;border-left-color:var(--warn)}
+  .insight.warn b{color:var(--warn)}
+  .mini-stat{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .mini-stat .ms{flex:1;min-width:120px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .mini-stat .msv{font-size:18px;font-weight:800}
+  .mini-stat .msl{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+  .dow-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:13px}
+  .dow-row .down{flex:0 0 34px;color:var(--muted);font-weight:700}
+  .dow-row .dow-track{flex:1;height:14px;background:var(--bg);border-radius:6px;overflow:hidden}
+  .dow-row .dow-fill{height:100%;background:var(--accent);border-radius:6px}
+  .dow-row .dowv{flex:0 0 auto;min-width:48px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  /* Remise employé */
+  .staff-toggle{width:100%;border:1px dashed var(--brand);background:var(--brand-soft);color:var(--brand-dark);font-weight:700;font-size:13px;padding:9px 10px;border-radius:10px;cursor:pointer;margin-bottom:8px;text-align:left;line-height:1.3}
+  .staff-toggle.active{background:var(--brand);color:#fff;border-style:solid}
+  .staff-toggle:disabled{opacity:.5;cursor:default}
+  .staff-warn{font-size:11px;color:var(--warn);background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 8px;margin-bottom:8px;line-height:1.35;font-weight:600}
+  .pay-methods{display:flex;gap:8px;margin:12px 0}
+  .pm-btn{flex:1;border:2px solid var(--line);background:var(--card);color:var(--ink);font-weight:700;font-size:15px;padding:12px;border-radius:12px;cursor:pointer}
+  .pm-btn.active{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-dark)}
+  .disc-row{display:flex;justify-content:space-between;font-size:13px;color:var(--brand-dark);font-weight:700;margin-bottom:6px}
+  .rem-tag{background:var(--brand);color:#fff;font-size:10px;font-weight:800;padding:1px 5px;border-radius:5px;vertical-align:middle}
+  .btn-receipt{width:100%;margin-top:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:600;font-size:13px;padding:9px;border-radius:10px;cursor:pointer}
+  .btn-receipt:disabled{opacity:.45;cursor:default}
+  /* Prix d'achat / éditeur */
+  .ce-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .ce-row span.cen{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ce-row span.cepx{flex:0 0 auto;color:var(--muted);font-size:12px}
+  .ce-row input.ce-in{flex:0 0 92px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+  /* Ticket de caisse */
+  .receipt-modal{max-width:360px;text-align:left}
+  .receipt-scroll{max-height:60vh;overflow:auto;background:#f7f7f7;padding:12px;border-radius:10px}
+  .rc{background:#fff;color:#111;font-family:'Courier New',monospace;font-size:12px;width:280px;margin:0 auto 14px;padding:14px 16px;border:1px solid #ddd;line-height:1.35}
+  .rc-logo{text-align:center;font-weight:800;font-size:15px;letter-spacing:1px}
+  .rc-h{text-align:center;font-weight:800;font-size:13px;letter-spacing:3px;margin-bottom:4px}
+  .rc-c{text-align:center;font-size:11px}
+  .rc-sep{border-top:1px dashed #999;margin:8px 0}
+  .rc-item{display:flex;justify-content:space-between;gap:10px}
+  .rc-sub{color:#555;font-size:10px;margin:0 0 3px 6px}
+  .rc-tot{font-weight:800;font-size:13px;margin-top:3px}
+  .rc-f{text-align:center;font-size:11px;margin-top:3px}
+  @media print{
+    body *{visibility:hidden !important;}
+    #receiptArea,#receiptArea *{visibility:visible !important;}
+    #receiptArea{position:absolute;left:0;top:0;width:100%;max-height:none;overflow:visible;background:#fff;padding:0}
+    .rc{border:none;page-break-after:always;width:100%;max-width:300px}
+    .rc-actions{display:none !important;}
+  }
+  .muted-btn{background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;font-size:13px}
+
+  /* MODALE PAIEMENT */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .overlay.show{display:flex}
+  .modal{background:var(--card);border-radius:18px;width:100%;max-width:400px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .modal h3{margin:0 0 4px;font-size:18px}
+  .modal .mtot{font-size:32px;font-weight:800;color:var(--brand-dark);margin-bottom:14px}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+  .key{padding:16px;border:1px solid var(--line);background:var(--bg);border-radius:12px;font-size:20px;font-weight:700;cursor:pointer}
+  .recv-display{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:20px;font-weight:700;text-align:right;margin-bottom:6px;min-height:50px}
+  .change{font-size:16px;font-weight:700;text-align:right;color:var(--accent);min-height:24px;margin-bottom:10px}
+  .quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .quick button{flex:1;min-width:60px;padding:10px;border:1px solid var(--line);background:var(--bg);border-radius:10px;font-weight:700;cursor:pointer}
+  .modal-actions{display:flex;gap:8px;margin-top:6px}
+  /* ASSISTANT */
+  .asst-intro{background:var(--brand-soft);border:1px solid #cfe6d8;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.5;color:var(--brand-dark)}
+  .lessons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+  .lesson{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;text-align:left}
+  .lesson:active{transform:scale(.98)}
+  .lesson b{display:block;font-size:14px;margin-bottom:3px}
+  .lesson span{color:var(--muted);font-size:12px}
+  .lesson .step{color:var(--brand);font-weight:700;font-size:12px}
+  .chat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;height:360px;box-shadow:var(--shadow)}
+  .chat-log{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .bubble{max-width:85%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.5}
+  .bubble.bot{background:var(--bg);align-self:flex-start;border-bottom-left-radius:4px}
+  .bubble.me{background:var(--brand);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+  .bubble ul{margin:6px 0 0;padding-left:18px}
+  .bubble li{margin:3px 0}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line)}
+  .chip{border:1px solid var(--line);background:var(--bg);border-radius:16px;padding:6px 11px;font-size:12px;cursor:pointer;font-weight:600;color:var(--ink)}
+  .chat-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+  .chat-input input{flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:12px;font-size:14px}
+  .chat-input button{background:var(--brand);color:#fff;border:none;border-radius:11px;padding:0 18px;font-weight:700;cursor:pointer}
+
+  /* HEADER USER */
+  .userchip{display:flex;align-items:center;gap:7px;background:var(--brand-soft);color:var(--brand-dark);border-radius:20px;padding:5px 10px 5px 7px;font-weight:700;font-size:13px}
+  .userchip .av{width:22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .lock-btn{border:1px solid var(--line);background:var(--card);border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:15px}
+
+  /* SCAN */
+  .ui-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .ui-box{background:var(--card);border-radius:16px;padding:20px;max-width:360px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .ui-msg{font-size:15px;line-height:1.5;color:var(--ink);white-space:pre-line;margin-bottom:18px}
+  .ui-acts{display:flex;gap:10px;justify-content:flex-end}
+  .ui-btn{border:none;border-radius:10px;padding:11px 20px;font-size:15px;font-weight:700;cursor:pointer}
+  .ui-btn.ui-no{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+  .ui-btn.ui-yes{background:var(--brand);color:#fff}
+  .scanbar{display:flex;gap:8px;margin-bottom:12px}
+  .scan-feed{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .scan-feed .sf-head{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--brand-soft);font-weight:700;font-size:13px;color:var(--brand-dark)}
+  .scan-feed .sf-head button{border:1px solid var(--brand);background:var(--card);color:var(--brand-dark);font-weight:700;font-size:12px;cursor:pointer;padding:5px 10px;border-radius:8px}
+  .scan-feed .sf-head button:active{background:var(--brand-soft)}
+  .scan-feed .sf-list{max-height:170px;overflow:auto}
+  .sf-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--line);font-size:13px}
+  .sf-item:last-child{border-bottom:none}
+  .sf-item .sfi-ic{flex:0 0 auto;font-weight:800}
+  .sf-item.ok .sfi-ic{color:var(--brand)}
+  .sf-item.ko{background:var(--danger-soft)}
+  .sf-item.ko .sfi-ic{color:var(--danger)}
+  .sf-item .sfi-t{flex:0 0 auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+  .sf-item .sfi-n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .sf-item .sfi-p{flex:0 0 auto;font-weight:700;font-variant-numeric:tabular-nums}
+  .sf-item.flash{animation:sfflash .6s ease}
+  @keyframes sfflash{from{background:#d1fae5}to{background:transparent}}
+  .scanbar .search{margin-bottom:0;flex:1}
+  .scan-btn{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:0 14px;font-size:20px;cursor:pointer}
+  .scan-overlay{position:fixed;inset:0;background:#000;display:none;flex-direction:column;z-index:60}
+  .scan-overlay.show{display:flex}
+  .scan-overlay video{width:100%;flex:1;object-fit:cover}
+  .scan-head{color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center;font-weight:700}
+  .scan-head button{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+  .scan-hint{color:#fff;text-align:center;padding:14px;font-size:14px;opacity:.85}
+
+  /* RÉGLAGES */
+  .rg-sec{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .rg-sec h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:7px}
+  .emp-row{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:8px}
+  .emp-row .ei{flex:1}
+  .emp-row .ei b{font-size:14px}
+  .emp-row .ei span{display:block;color:var(--muted);font-size:12px}
+  .role-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:12px}
+  .role-g{background:#fde9c8;color:var(--warn)}
+  .role-e{background:var(--brand-soft);color:var(--brand-dark)}
+  .rg-btn{background:var(--brand);color:#fff;border:none;border-radius:11px;padding:11px 16px;font-weight:700;font-size:14px;cursor:pointer}
+  .rg-btn.sec{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+  .rg-btn.danger{background:var(--danger-soft);color:var(--danger)}
+  .rg-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* LOGIN */
+  .login{position:fixed;inset:0;background:linear-gradient(160deg,#1f7a4d,#155c39);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:70;padding:20px}
+  .login.show{display:flex}
+  .login .box{background:#fff;border-radius:22px;padding:26px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .login .logo-l{width:68px;height:68px;border-radius:16px;background:repeating-linear-gradient(90deg,#17121b 0 4px,#201a26 4px 8px);border:1px solid #c9a15a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:32px;letter-spacing:-2px;margin:0 auto 12px;text-shadow:0 0 8px #ff1aa1,0 0 18px #ff2aa6;font-family:'Arial Black','Arial',system-ui,sans-serif;box-shadow:0 0 18px rgba(255,30,160,.35)}
+  .login h2{margin:0 0 2px;font-size:19px}
+  .login p{margin:0 0 16px;color:var(--muted);font-size:14px}
+  .pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:18px}
+  .pin-dot{width:15px;height:15px;border-radius:50%;border:2px solid var(--brand);background:#fff}
+  .pin-dot.on{background:var(--brand)}
+  .pin-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pin-key{padding:16px;border:none;background:var(--bg);border-radius:14px;font-size:22px;font-weight:700;cursor:pointer}
+  .pin-key:active{background:var(--brand-soft)}
+  .pin-key.empty{background:transparent;cursor:default}
+  .login .err{color:var(--danger);font-size:13px;font-weight:600;min-height:18px;margin-bottom:8px}
+  @media(max-width:720px){
+    .lessons{grid-template-columns:1fr}
+    #caisse.active{grid-template-columns:1fr;grid-template-rows:1fr auto}
+    .ticket{border-left:none;border-top:1px solid var(--line);max-height:46vh}
+    header{flex-wrap:wrap}
+    header h1{font-size:15px;flex:1 1 auto}
+    .tabs{order:5;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+    .tab{flex:0 0 auto;padding:8px 12px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">MP</div>
+  <h1>Market Place Épicerie</h1>
+  <div class="userchip" id="userChip" style="display:none"><span class="av" id="userAv">?</span><span id="userName">—</span></div>
+  <button class="lock-btn" id="lockBtn" title="Changer d'utilisateur" style="display:none">🔒</button>
+  <div class="tabs">
+    <button class="tab active" data-view="caisse">Caisse</button>
+    <button class="tab" data-view="produits">Produits</button>
+    <button class="tab" data-view="journee">Bilan</button>
+    <button class="tab" data-view="analyse">Analyse</button>
+    <button class="tab" data-view="assistant">Assistant</button>
+    <button class="tab" data-view="reglages">Réglages</button>
+  </div>
+</header>
+
+<main>
+  <!-- CAISSE -->
+  <section class="view active" id="caisse">
+    <div class="grid-wrap">
+      <div class="scanbar">
+        <input class="search" id="search" placeholder="Rechercher ou taper un code-barres…">
+        <button class="scan-btn" id="scanBtn" title="Scanner un code-barres">📷</button>
+      </div>
+      <div class="scan-feed" id="scanFeed" style="display:none">
+        <div class="sf-head"><span id="scanFeedCount">📡 Scans en direct</span><button type="button" id="scanFeedClear" title="Vider la liste">🗑 Effacer</button></div>
+        <div class="sf-list" id="scanFeedList"></div>
+      </div>
+      <div class="cats" id="cats"></div>
+      <div class="products" id="products"></div>
+    </div>
+    <div class="ticket">
+      <h2>Ticket en cours</h2>
+      <div class="lines" id="lines"><div class="empty">Aucun article.<br>Touchez un produit pour l'ajouter.</div></div>
+      <div class="totbar">
+        <button class="staff-toggle" id="staffBtn">👤 Remise employé −40% — max 2 boissons + 2 articles alimentaires</button>
+        <div class="staff-warn" id="staffWarn">⚠️ Avantage réservé aux employés — 1 ticket/jour, max 2 boissons sans alcool + 2 articles alimentaires. Interdit pour un client.</div>
+        <div class="disc-row" id="discRow" style="display:none"></div>
+        <div class="totrow"><span class="tl">Total</span><span class="tv" id="total">0,00 €</span></div>
+        <div class="pay-actions">
+          <button class="btn btn-clear" id="clearBtn">Annuler</button>
+          <button class="btn btn-pay" id="payBtn" disabled>Encaisser</button>
+        </div>
+        <button class="btn-receipt" id="lastReceiptBtn" disabled>🧾 Imprimer le ticket du dernier achat</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUITS -->
+  <section class="view" id="produits">
+    <div class="pad">
+      <div class="sec-title">Mes produits</div>
+      <div class="form-card">
+        <h3 id="formTitle">Ajouter un produit</h3>
+        <div class="field"><label>Nom</label><input id="fName" maxlength="40" autocomplete="off" placeholder="Ex : Bouteille d'eau 1,5 L"></div>
+        <div class="form-row">
+          <div class="field"><label>Prix (€)</label><input id="fPrice" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+          <div class="field"><label>Catégorie</label><input id="fCat" maxlength="24" autocomplete="off" placeholder="Ex : Boissons"></div>
+        </div>
+        <div class="field"><label>Code-barres (optionnel)</label><input id="fBarcode" maxlength="20" inputmode="numeric" autocomplete="off" placeholder="Scannez ou tapez le code"></div>
+        <div id="fGerantZone" style="display:none;border-top:1px dashed var(--line);padding-top:12px;margin-top:4px">
+          <div class="field"><label>🔒 Prix d'achat (€) — confidentiel, gérant uniquement</label><input id="fCost" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></div>
+          <div class="field"><label>Taux de TVA</label>
+            <select id="fTva" style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px">
+              <option value="">Automatique selon le rayon (5,5 % alimentaire, 20 % alcool / non-alimentaire)</option>
+              <option value="5.5">5,5 % (alimentation, boissons sans alcool)</option>
+              <option value="10">10 % (vente à consommer sur place / plats préparés)</option>
+              <option value="20">20 % (alcools, confiseries, hygiène, entretien…)</option>
+              <option value="2.1">2,1 % (presse, certains médicaments)</option>
+            </select>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:600"><input type="checkbox" id="fElig" checked> Éligible à la remise employé −40% (alimentaire / boisson sans alcool)</label>
+        </div>
+        <input type="hidden" id="fId">
+        <button class="add-btn" id="saveProd">Ajouter</button>
+      </div>
+      <div id="prodList"></div>
+    </div>
+  </section>
+
+  <!-- JOURNÉE -->
+  <section class="view" id="journee">
+    <div class="pad">
+      <div class="sec-title">Bilan</div>
+      <div class="period" id="period">
+        <button class="per-btn active" data-per="jour">Jour</button>
+        <button class="per-btn" data-per="semaine">Semaine</button>
+        <button class="per-btn" data-per="mois">Mois</button>
+      </div>
+      <div id="dayTitle" style="font-weight:700;font-size:15px;margin:4px 0 12px;color:var(--muted)"></div>
+      <div class="stats">
+        <div class="stat"><div class="sv" id="dayTotal">0,00 €</div><div class="sl">Chiffre du jour</div></div>
+        <div class="stat"><div class="sv" id="dayCount">0</div><div class="sl">Tickets</div></div>
+        <div class="stat"><div class="sv" id="dayAvg">0,00 €</div><div class="sl">Panier moyen</div></div>
+        <div class="stat"><div class="sv" id="dayItems">0</div><div class="sl">Articles vendus</div></div>
+      </div>
+      <div id="payBreakdown"></div>
+      <div id="empBreakdown"></div>
+      <div id="topProducts"></div>
+      <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap">
+        <button class="muted-btn" id="exportBtn">Exporter ce bilan (CSV)</button>
+        <button class="muted-btn" id="printDayBtn">🧾 Imprimer les tickets</button>
+        <button class="muted-btn" id="printXBtn">📊 Rapport X du jour</button>
+      </div>
+      <div id="detailTitle" style="font-weight:700;font-size:14px;margin-bottom:8px">Détail des tickets</div>
+      <div id="salesList"></div>
+    </div>
+  </section>
+
+  <!-- ANALYSE -->
+  <section class="view" id="analyse">
+    <div class="pad" style="max-width:1000px">
+    <div class="sec-title">Analyse des ventes</div>
+    <div class="period" id="anaPeriod">
+      <button class="per-btn active" data-ana="jour">Aujourd'hui</button>
+      <button class="per-btn" data-ana="semaine">7 jours</button>
+      <button class="per-btn" data-ana="mois">30 jours</button>
+      <button class="per-btn" data-ana="tout">Tout</button>
+    </div>
+    <div id="anaScope" style="font-weight:700;font-size:13px;margin:4px 0 12px;color:var(--muted)"></div>
+
+    <div id="anaInsights"></div>
+    <div id="anaPay"></div>
+
+    <div class="an-grid">
+      <div class="day-block">
+        <h4>🥇 Produits les plus vendus</h4>
+        <div id="anaTop"></div>
+      </div>
+      <div class="day-block">
+        <h4>🧊 Produits les moins vendus</h4>
+        <div id="anaFlop"></div>
+      </div>
+    </div>
+
+    <div class="day-block">
+      <h4>💰 Rentabilité — bénéfice exact (prix d'achat confidentiel)</h4>
+      <div id="anaProfit"></div>
+      <button class="muted-btn" id="editCostsBtn" style="margin-top:10px">🔒 Saisir / modifier les prix d'achat</button>
+      <div id="costEditor" style="display:none;margin-top:12px"></div>
+    </div>
+
+    <div class="day-block">
+      <h4>🏷️ Ventes par rayon</h4>
+      <div id="anaCats"></div>
+    </div>
+
+    <div class="day-block">
+      <h4>👤 Remises employé (suivi)</h4>
+      <div id="anaStaff"></div>
+    </div>
+
+    <div class="day-block">
+      <h4>🔎 Étudier un produit</h4>
+      <select id="anaProdSel" class="an-select"></select>
+      <div id="anaProd"></div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ASSISTANT -->
+  <section class="view" id="assistant">
+    <div class="pad">
+      <div class="sec-title">Assistant de caisse</div>
+      <div class="asst-intro">👋 Bonjour ! Je suis l'assistant de la caisse. Je réponds aux questions des employés et je forme les nouveaux. Touchez une leçon, ou posez votre question en bas.</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:8px">Formation express</div>
+      <div class="lessons" id="lessons"></div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:8px">Une question ?</div>
+      <div class="chat">
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chips" id="chips"></div>
+        <div class="chat-input">
+          <input id="chatInput" placeholder="Écrivez votre question…">
+          <button id="chatSend">Envoyer</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RÉGLAGES -->
+  <section class="view" id="reglages">
+    <div class="pad">
+      <div class="sec-title">Réglages</div>
+
+      <div class="rg-sec">
+        <h3>👥 Employés</h3>
+        <div class="field"><label>Nom de l'employé</label><input id="empName" maxlength="24" autocomplete="off" placeholder="Ex : Sarah"></div>
+        <div class="form-row">
+          <div class="field"><label>Code (4 chiffres)</label><input id="empCode" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Ex : 4 chiffres"></div>
+          <div class="field"><label>Rôle</label>
+            <select id="empRole" style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px">
+              <option value="employe">Employé (caisse seulement)</option>
+              <option value="gerant">Gérant (accès total)</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" id="empId">
+        <button class="rg-btn" id="saveEmp" style="width:100%">Ajouter l'employé</button>
+        <div id="empList" style="margin-top:14px"></div>
+      </div>
+
+      <div class="rg-sec">
+        <h3>🏪 Identité du commerce (imprimée sur les tickets)</h3>
+        <div class="field"><label>Nom commercial</label><input id="shName" maxlength="40" autocomplete="off"></div>
+        <div class="field"><label>Adresse</label><input id="shAddr" maxlength="80" autocomplete="off" placeholder="N°, rue, code postal, ville"></div>
+        <div class="form-row">
+          <div class="field"><label>SIRET</label><input id="shSiret" maxlength="17" inputmode="numeric" autocomplete="off" placeholder="14 chiffres"></div>
+          <div class="field"><label>N° TVA intracommunautaire</label><input id="shTva" maxlength="15" autocomplete="off" placeholder="FR…"></div>
+        </div>
+        <button class="rg-btn" id="saveShop" style="width:100%">Enregistrer l'identité</button>
+      </div>
+
+      <div class="rg-sec">
+        <h3>🛡️ Conformité anti-fraude TVA</h3>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 10px">Les ventes ne peuvent être ni modifiées ni supprimées. Chaque ticket, clôture et événement est numéroté et scellé par une empreinte. Une erreur se corrige par un ticket d'annulation (Bilan → ↩). Les journées, mois et années terminés sont clôturés automatiquement.</p>
+        <div id="integrityStatus" class="insight" style="margin-bottom:12px">Intégrité non vérifiée.</div>
+        <div class="rg-actions">
+          <button class="rg-btn" id="verifyBtn">Vérifier l'intégrité</button>
+          <button class="rg-btn sec" id="archiveBtn">Exporter l'archive fiscale</button>
+          <button class="rg-btn sec" id="showClotBtn">Clôtures (tickets Z)</button>
+          <button class="rg-btn sec" id="showJetBtn">Journal des événements</button>
+        </div>
+        <div id="conformList" style="margin-top:12px"></div>
+      </div>
+
+      <div class="rg-sec">
+        <h3>📲 Application installée</h3>
+        <div id="installStatus" class="insight" style="margin-bottom:12px"></div>
+        <div class="rg-actions"><button class="rg-btn" id="installBtn" style="display:none">Installer la caisse sur cet appareil</button></div>
+        <div style="color:var(--muted);font-size:13px;line-height:1.55;margin-top:10px">
+          <b>iPad / iPhone (Safari)</b> : bouton Partager <span aria-hidden="true">⬆️</span> → « Sur l'écran d'accueil ».<br>
+          <b>Tablette Android (Chrome)</b> : menu ⋮ → « Installer l'application ».<br>
+          <b>Ordinateur (Chrome / Edge)</b> : icône d'installation dans la barre d'adresse.
+        </div>
+      </div>
+
+      <div class="rg-sec">
+        <h3>💾 Sauvegarde</h3>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:12px"><input type="checkbox" id="autoBackup"> Sauvegarde automatique : à la première connexion du gérant chaque jour, un fichier de sauvegarde est téléchargé sur l'appareil.</label>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Exportez un fichier de sauvegarde (produits, employés, ventes). Pour transférer sur un autre appareil : exportez ici, puis importez le fichier là-bas.</p>
+        <div class="rg-actions">
+          <button class="rg-btn" id="exportAll">Exporter la sauvegarde</button>
+          <button class="rg-btn sec" id="importAll">Importer une sauvegarde</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none">
+        </div>
+      </div>
+
+      <div class="rg-sec">
+        <h3>📧 Bilan par email</h3>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 10px">Reçois ton bilan par email en 1 appui. Saisis ton adresse, puis choisis la période : ton appli mail s'ouvre avec le bilan déjà rempli.</p>
+        <div class="field"><label>Ton adresse email</label><input id="reportEmail" type="email" autocomplete="off" placeholder="ex : gerant@monmagasin.fr"></div>
+        <div class="rg-actions">
+          <button class="rg-btn" id="mailDay">Bilan du jour</button>
+          <button class="rg-btn sec" id="mailWeek">Bilan de la semaine</button>
+          <button class="rg-btn sec" id="mailMonth">Bilan du mois</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:600;margin-top:12px"><input type="checkbox" id="reportRemind"> Me rappeler d'envoyer le bilan de la veille à l'ouverture (chaque nouveau jour)</label>
+      </div>
+
+      <div class="rg-sec">
+        <h3 style="color:var(--danger)">⚠️ Zone sensible</h3>
+        <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Remet la caisse à zéro. Possible uniquement tant qu'aucune vente n'a été enregistrée : la loi interdit d'effacer les ventes.</p>
+        <button class="rg-btn danger" id="wipeBtn">Tout effacer</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODALE PAIEMENT -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>Encaissement</h3>
+    <div class="mtot" id="mTotal">0,00 €</div>
+    <div class="pay-methods">
+      <button class="pm-btn active" id="pmEspece" data-pm="espece">💶 Espèces €</button>
+      <button class="pm-btn" id="pmCB" data-pm="cb">💳 Carte</button>
+      <button class="pm-btn" id="pmCHF" data-pm="chf">🇨🇭 CHF</button>
+    </div>
+    <div id="chfNote" style="display:none;text-align:center;color:var(--brand-dark);font-weight:700;font-size:12px;margin-bottom:8px">1 CHF = 1 € · saisissez le montant reçu en CHF — la monnaie est rendue en EUROS</div>
+    <div id="cashUI">
+      <div class="quick" id="quick"></div>
+      <div class="recv-display" id="recv">0,00</div>
+      <div class="change" id="change"></div>
+      <div class="keys" id="keys"></div>
+    </div>
+    <div id="cbUI" style="display:none;text-align:center;padding:18px 10px;color:var(--muted);font-size:14px">💳 Paiement par carte bancaire<br>Montant exact — pas de monnaie à rendre.</div>
+    <div class="modal-actions">
+      <button class="btn btn-clear" style="flex:1" id="cancelPay">Retour</button>
+      <button class="btn btn-pay" id="confirmPay">Valider</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCAN CAMÉRA -->
+<div class="scan-overlay" id="scanOverlay">
+  <div class="scan-head"><span>Scanner un code-barres</span><button id="scanClose">Fermer</button></div>
+  <video id="scanVideo" playsinline></video>
+  <div class="scan-hint" id="scanHint">Visez le code-barres du produit…</div>
+</div>
+
+<!-- TICKET DE CAISSE (aperçu / impression) -->
+<div class="overlay" id="receiptOverlay">
+  <div class="modal receipt-modal">
+    <h3 id="receiptTitle">Ticket de caisse</h3>
+    <div id="receiptArea" class="receipt-scroll"></div>
+    <div class="modal-actions rc-actions">
+      <button class="btn btn-clear" style="flex:1" id="receiptClose">Fermer</button>
+      <button class="btn btn-pay" id="receiptPrint">🖨️ Imprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONNEXION EMPLOYÉ -->
+<div class="login" id="login">
+  <div class="box">
+    <div class="logo-l">MP</div>
+    <h2 id="loginTitle">Market Place Épicerie</h2>
+    <p id="loginSub">Entrez votre code</p>
+    <div class="err" id="loginErr"></div>
+    <div class="pin-dots" id="pinDots"></div>
+    <div class="pin-keys" id="pinKeys"></div>
+  </div>
+</div>
+
+<script>
+// ---- Stockage de secours : copie de toutes les données dans IndexedDB ----
+// Si le stockage principal (localStorage) est vidé, la caisse se restaure toute seule au démarrage.
+window.MPStore=(function(){
+  var DB='caisse-mp',ST='kv',dbp=null;
+  function open(){
+    if(dbp)return dbp;
+    dbp=new Promise(function(res,rej){
+      try{var r=indexedDB.open(DB,1);
+        r.onupgradeneeded=function(){r.result.createObjectStore(ST);};
+        r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};
+      }catch(e){rej(e);}
+    });
+    return dbp;
+  }
+  return {
+    set:function(k,v){if(!window.indexedDB)return;open().then(function(db){db.transaction(ST,'readwrite').objectStore(ST).put(v,k);}).catch(function(){});},
+    del:function(k){if(!window.indexedDB)return;open().then(function(db){db.transaction(ST,'readwrite').objectStore(ST).delete(k);}).catch(function(){});},
+    getAll:function(cb){
+      if(!window.indexedDB){cb(null);return;}
+      open().then(function(db){
+        var out={},tx=db.transaction(ST,'readonly'),st=tx.objectStore(ST),cur=st.openCursor();
+        cur.onsuccess=function(){var c=cur.result;if(c){out[c.key]=c.value;c.continue();}else cb(out);};
+        cur.onerror=function(){cb(null);};
+      }).catch(function(){cb(null);});
+    }
+  };
+})();
+</script>
+<script>
+function startApp(){
+  "use strict";
+  var LS_PROD="epicerie_products_v1", LS_SALES="epicerie_sales_v1", LS_EMP="epicerie_emp_v1";
+  function load(k,def){try{var v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
+  var storageWarned=false;
+  function save(k,val){
+    var str=JSON.stringify(val);
+    try{localStorage.setItem(k,str);}
+    catch(e){
+      if(!storageWarned){storageWarned=true;setTimeout(function(){uiAlert('⚠️ La mémoire de la caisse est pleine ou bloquée.\n\nLes données sont gardées dans la copie de secours, mais exportez tout de suite une sauvegarde et l\'archive fiscale (Réglages).');},0);}
+    }
+    MPStore.set(k,str);
+  }
+  function eur(n){return (Math.round(n*100)/100).toFixed(2).replace('.',',')+' €';}
+  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+  // =====================================================================
+  // CONFORMITÉ ANTI-FRAUDE TVA (art. 286-I-3° bis du CGI)
+  // Inaltérabilité : ventes, clôtures et journal sont enregistrés à la suite
+  // (jamais modifiés ni supprimés) et chaînés par une empreinte SHA-256.
+  // Sécurisation : numérotation continue + chaînage vérifiable.
+  // Conservation : clôtures journalières / mensuelles / annuelles avec
+  // grand total perpétuel. Archivage : export « archive fiscale » vérifiable.
+  // =====================================================================
+  var LS_JET='epicerie_jet_v1', LS_CLOT='epicerie_clot_v1', LS_SHOP='epicerie_shop_v1', LS_PRINTS='epicerie_prints_v1';
+  var GENESIS='0000000000000000000000000000000000000000000000000000000000000000';
+  // SHA-256 (synchrone, sans dépendance, UTF-8)
+  function sha256(str){
+    var s=unescape(encodeURIComponent(str)),i,j;
+    var K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    var H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    var l=s.length,n=((l+8)>>6)+1,W=new Array(n*16),w=new Array(64);
+    for(i=0;i<W.length;i++)W[i]=0;
+    for(i=0;i<l;i++)W[i>>2]|=s.charCodeAt(i)<<(24-(i%4)*8);
+    W[l>>2]|=0x80<<(24-(l%4)*8);
+    W[n*16-1]=l*8;
+    for(j=0;j<n*16;j+=16){
+      var a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+      for(i=0;i<64;i++){
+        if(i<16)w[i]=W[j+i]|0;
+        else{var x=w[i-15],y=w[i-2];
+          var s0=((x>>>7)|(x<<25))^((x>>>18)|(x<<14))^(x>>>3);
+          var s1=((y>>>17)|(y<<15))^((y>>>19)|(y<<13))^(y>>>10);
+          w[i]=(w[i-16]+s0+w[i-7]+s1)|0;}
+        var S1=((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7));
+        var t1=(h+S1+((e&f)^(~e&g))+K[i]+w[i])|0;
+        var S0=((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10));
+        var t2=(S0+((a&b)^(a&c)^(b&c)))|0;
+        h=g;g=f;f=e;e=(d+t1)|0;d=c;c=b;b=a;a=(t1+t2)|0;
+      }
+      H[0]=(H[0]+a)|0;H[1]=(H[1]+b)|0;H[2]=(H[2]+c)|0;H[3]=(H[3]+d)|0;H[4]=(H[4]+e)|0;H[5]=(H[5]+f)|0;H[6]=(H[6]+g)|0;H[7]=(H[7]+h)|0;
+    }
+    return H.map(function(v){return ('00000000'+(v>>>0).toString(16)).slice(-8);}).join('');
+  }
+  // Ajoute un enregistrement à une chaîne (numéro suivant + empreinte du précédent)
+  function chainAppend(arr,obj,lsKey){
+    var last=arr[arr.length-1];
+    obj.seq=last?last.seq+1:1;
+    obj.prev=last?last.hash:GENESIS;
+    obj.hash=sha256(JSON.stringify(obj));
+    arr.push(obj);if(lsKey)save(lsKey,arr);
+    return obj;
+  }
+  // Vérifie une chaîne : numéros continus, lien avec le précédent, empreinte intacte
+  function verifyChain(arr){
+    var prev=GENESIS;
+    for(var i=0;i<arr.length;i++){
+      var c=JSON.parse(JSON.stringify(arr[i]));var h=c.hash;delete c.hash;
+      if(c.seq!==i+1)return {ok:false,at:i+1,why:'numérotation interrompue'};
+      if(c.prev!==prev)return {ok:false,at:c.seq,why:'lien avec l\'enregistrement précédent rompu'};
+      if(sha256(JSON.stringify(c))!==h)return {ok:false,at:c.seq,why:'enregistrement modifié'};
+      prev=h;
+    }
+    return {ok:true,n:arr.length};
+  }
+  function seqLabel(n){return String(n).padStart(6,'0');}
+  // ---- TVA ----
+  var TVA_20_CATS=['Alcools','Alcool','Hygiène','Entretien','Animalerie','Divers','Bébé'];
+  function tvaOf(p){if(p&&p.tva!=null)return p.tva;return (p&&TVA_20_CATS.indexOf(p.cat)>=0)?20:5.5;}
+  function tvaBreak(items){
+    var by={};
+    items.forEach(function(i){var t=i.tva!=null?i.tva:5.5;by[t]=(by[t]||0)+i.price*i.qty;});
+    return Object.keys(by).map(Number).sort(function(a,b){return a-b;}).map(function(t){
+      var ttc=r2(by[t]),ht=r2(ttc/(1+t/100));return {taux:t,ht:ht,tva:r2(ttc-ht),ttc:ttc};
+    });
+  }
+  function fmtTaux(t){return String(t).replace('.',',')+' %';}
+  // ---- Journal des événements techniques (JET) ----
+  var jet=load(LS_JET,[]);
+  function logEvent(type,detail){
+    try{chainAppend(jet,{ts:Date.now(),type:type,user:(currentUser?currentUser.name:'—'),detail:detail||''},LS_JET);}catch(e){}
+  }
+  var shop=load(LS_SHOP,{name:'Market Place Épicerie',address:'',siret:'',tvaNum:''});
+  var clotures=load(LS_CLOT,[]);
+  function printsMap(){return load(LS_PRINTS,{})||{};}
+
+  var defaultProducts=[
+    {id:uid(),name:"Pain",price:1.10,cat:"Boulangerie"},
+    {id:uid(),name:"Lait 1 L",price:1.05,cat:"Frais"},
+    {id:uid(),name:"Eau 1,5 L",price:0.60,cat:"Boissons"},
+    {id:uid(),name:"Coca 33 cl",price:1.20,cat:"Boissons"},
+    {id:uid(),name:"Café 250 g",price:3.50,cat:"Épicerie"},
+    {id:uid(),name:"Œufs x6",price:2.20,cat:"Frais"},
+    {id:uid(),name:"Pâtes 500 g",price:1.15,cat:"Épicerie"},
+    {id:uid(),name:"Chips",price:1.80,cat:"Snacks"},
+    {id:uid(),name:"Chocolat",price:1.90,cat:"Snacks"},
+    {id:uid(),name:"Sac plastique",price:0.10,cat:"Divers"}
+  ];
+
+  var products=load(LS_PROD,null);
+  if(products===null){products=defaultProducts; save(LS_PROD,products);}
+  var sales=load(LS_SALES,[]);
+  var employees=load(LS_EMP,[]);
+  var currentUser=null;
+  // Codes PIN : jamais stockés en clair (empreinte salée, répétée)
+  function hashPin(salt,pin){var x=salt+'|'+pin;for(var i=0;i<2000;i++)x=sha256(x);return x;}
+  function setPin(emp,pin){emp.salt=uid()+uid();emp.pin=hashPin(emp.salt,pin);delete emp.code;}
+  function pinMatches(emp,pin){return !!(emp&&emp.salt&&emp.pin)&&hashPin(emp.salt,pin)===emp.pin;}
+  function migratePins(list){var ch=false;list.forEach(function(e){if(e.code!=null){setPin(e,String(e.code));ch=true;}});return ch;}
+  if(migratePins(employees))save(LS_EMP,employees);
+  // Ventes enregistrées avant la mise en conformité : numérotées et chaînées une fois pour toutes
+  function migrateLegacySales(list){
+    if(!list.length||list[0].hash)return list;
+    var catOfName={};products.forEach(function(p){catOfName[p.name]=p;});
+    var out=[];
+    list.slice().sort(function(a,b){return a.ts-b.ts;}).forEach(function(s){
+      var items=s.items.map(function(i){var p=catOfName[i.name];var o={pid:i.pid||(p?p.id:undefined),name:i.name,cat:i.cat||(p?p.cat:undefined),price:i.price,qty:i.qty,tva:tvaOf(p)};if(i.base)o.base=i.base;return o;});
+      chainAppend(out,{id:s.id,type:'vente',ts:s.ts,employee:s.employee,payment:s.payment||'espece',total:s.total,received:s.received,
+        staff:!!s.staff,discount:s.discount||0,staffBy:s.staffBy||null,items:items,tvaDetail:tvaBreak(items),reprise:true},null);
+    });
+    save(LS_SALES,out);
+    return out;
+  }
+  if(sales.length&&!sales[0].hash){var nOld=sales.length;sales=migrateLegacySales(sales);logEvent('REPRISE_HISTORIQUE',nOld+' ventes antérieures numérotées et chaînées');}
+  if(!jet.length)logEvent('INITIALISATION','Journal des événements ouvert');
+  if(window.__mpRestored)logEvent('RESTAURATION_AUTO','Données restaurées depuis la copie de secours de l\'appareil');
+  var cart=[]; // {id,name,price,qty}
+  var activeCat="Tout", search="";
+
+  var $=function(s){return document.querySelector(s);};
+  var el=function(t,c){var e=document.createElement(t);if(c)e.className=c;return e;};
+  // Dialogues intégrés (les confirm()/uiAlert() natifs sont bloqués dans l'artifact)
+  function uiAlert(msg,onOk){
+    var ov=el('div','ui-ov');
+    ov.innerHTML='<div class="ui-box"><div class="ui-msg"></div><div class="ui-acts"><button class="ui-btn ui-yes">OK</button></div></div>';
+    ov.querySelector('.ui-msg').textContent=msg;
+    document.body.appendChild(ov);
+    ov.querySelector('.ui-yes').addEventListener('click',function(){ov.remove();if(onOk)onOk();});
+  }
+  function uiConfirm(msg,onYes,onNo){
+    var ov=el('div','ui-ov');
+    ov.innerHTML='<div class="ui-box"><div class="ui-msg"></div><div class="ui-acts"><button class="ui-btn ui-no">Non</button><button class="ui-btn ui-yes">Oui</button></div></div>';
+    ov.querySelector('.ui-msg').textContent=msg;
+    document.body.appendChild(ov);
+    function done(cb){ov.remove();if(cb)cb();}
+    ov.querySelector('.ui-yes').addEventListener('click',function(){done(onYes);});
+    ov.querySelector('.ui-no').addEventListener('click',function(){done(onNo);});
+    ov.addEventListener('click',function(e){if(e.target===ov)done(onNo);});
+  }
+
+  // ---- TABS ----
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
+      document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active');});
+      t.classList.add('active');
+      $('#'+t.dataset.view).classList.add('active');
+      if(t.dataset.view==='journee') renderReport();
+      if(t.dataset.view==='analyse'){ fillProdSelect(); renderAnalyse(); }
+      if(t.dataset.view==='produits') renderProdList();
+    });
+  });
+
+  // ---- CAISSE : catégories + produits ----
+  function categories(){
+    var set={}; products.forEach(function(p){if(p.cat)set[p.cat]=1;});
+    return ['Tout'].concat(Object.keys(set).sort());
+  }
+  function renderCats(){
+    var c=$('#cats'); c.innerHTML='';
+    categories().forEach(function(cat){
+      var b=el('button','cat'+(cat===activeCat?' active':''));
+      b.textContent=cat;
+      b.addEventListener('click',function(){activeCat=cat;renderCats();renderProducts();});
+      c.appendChild(b);
+    });
+  }
+  function renderProducts(){
+    var wrap=$('#products'); wrap.innerHTML='';
+    var list=products.filter(function(p){
+      var okCat=activeCat==='Tout'||p.cat===activeCat;
+      var okSearch=!search||p.name.toLowerCase().indexOf(search)>=0||(p.barcode&&p.barcode.indexOf(search)>=0);
+      return okCat&&okSearch;
+    });
+    if(!list.length){wrap.innerHTML='<div class="empty">Aucun produit. Ajoutez-en dans l\'onglet « Produits ».</div>';return;}
+    list.forEach(function(p){
+      var b=el('button','pcard');
+      b.innerHTML='<div class="pname">'+escapeHtml(p.name)+'</div><div class="pprice">'+eur(p.price)+'</div>';
+      b.addEventListener('click',function(){addToCart(p);});
+      wrap.appendChild(b);
+    });
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  // ---- Validation stricte des fichiers importés (aucun champ inattendu, types contrôlés) ----
+  var RESERVED=['__proto__','constructor','prototype','toString','valueOf','hasOwnProperty'];
+  function safeName(n){return typeof n==='string'&&RESERVED.indexOf(n.trim())<0;}
+  var RX_ID=/^[A-Za-z0-9]{1,40}$/, RX_HEX=/^[0-9a-f]{64}$/, TVA_OK=[2.1,5.5,10,20];
+  function isStr(x,max){return typeof x==='string'&&x.length<=max;}
+  function isNum(x){return typeof x==='number'&&isFinite(x);}
+  function isInt(x){return isNum(x)&&Math.floor(x)===x;}
+  function plain(o){return o!==null&&typeof o==='object'&&!Array.isArray(o);}
+  function onlyKeys(o,allowed){return plain(o)&&Object.keys(o).every(function(k){return allowed.indexOf(k)>=0;});}
+  function bad(what){throw new Error(what);}
+  function cleanProducts(arr){
+    if(!Array.isArray(arr)||arr.length>20000)bad('produits');
+    var seen={};
+    return arr.map(function(x,i){
+      if(!plain(x)||!RX_ID.test(x.id)||seen['k'+x.id])bad('produit '+(i+1)+' (identifiant)');seen['k'+x.id]=1;
+      if(!isStr(x.name,60)||!x.name.trim()||!safeName(x.name))bad('produit '+(i+1)+' (nom)');
+      if(!isNum(x.price)||x.price<0||x.price>100000)bad('produit '+(i+1)+' (prix)');
+      var o={id:x.id,name:x.name,price:Math.round(x.price*100)/100,cat:(isStr(x.cat,40)&&safeName(x.cat)&&x.cat.trim())?x.cat:'Divers'};
+      if(x.barcode!=null&&x.barcode!==''){if(!isStr(x.barcode,32)||!/^[0-9A-Za-z-]+$/.test(x.barcode))bad('produit '+(i+1)+' (code-barres)');o.barcode=x.barcode;}else o.barcode='';
+      if(x.cost!=null){if(!isNum(x.cost)||x.cost<0||x.cost>100000)bad('produit '+(i+1)+' (prix d\'achat)');o.cost=x.cost;}
+      if(x.elig!=null){if(typeof x.elig!=='boolean')bad('produit '+(i+1));o.elig=x.elig;}
+      if(x.tva!=null){if(TVA_OK.indexOf(x.tva)<0)bad('produit '+(i+1)+' (TVA)');o.tva=x.tva;}
+      if(x.by!=null){if(!RX_ID.test(x.by))bad('produit '+(i+1));o.by=x.by;}
+      if(x.pending===true)o.pending=true;
+      return o;
+    });
+  }
+  function cleanEmployees(arr){
+    if(!Array.isArray(arr)||arr.length>500)bad('employés');
+    var out=arr.map(function(x,i){
+      if(!plain(x)||!RX_ID.test(x.id)||!isStr(x.name,40)||!x.name.trim()||!safeName(x.name))bad('employé '+(i+1));
+      var o={id:x.id,name:x.name,role:x.role==='gerant'?'gerant':'employe'};
+      if(x.salt!=null||x.pin!=null){if(!/^[a-z0-9]{1,40}$/.test(x.salt)||!RX_HEX.test(x.pin))bad('employé '+(i+1)+' (code)');o.salt=x.salt;o.pin=x.pin;}
+      else if(x.code!=null&&/^[0-9]{4}$/.test(String(x.code))){setPin(o,String(x.code));}
+      else bad('employé '+(i+1)+' (code)');
+      return o;
+    });
+    if(!out.some(function(e){return e.role==='gerant';}))bad('aucun gérant');
+    return out;
+  }
+  var ITEM_KEYS=['pid','name','cat','price','qty','tva','base'];
+  function checkItems(items,chained){
+    if(!Array.isArray(items)||items.length>1000)bad('lignes');
+    items.forEach(function(it){
+      if(!onlyKeys(it,ITEM_KEYS)||!isStr(it.name,60)||!isNum(it.price)||!isNum(it.qty))bad('ligne de vente');
+      if(it.pid!=null&&!RX_ID.test(it.pid))bad('ligne de vente');
+      if(it.cat!=null&&!isStr(it.cat,40))bad('ligne de vente');
+      if(it.base!=null&&!isNum(it.base))bad('ligne de vente');
+      if(chained&&TVA_OK.indexOf(it.tva)<0)bad('TVA de ligne');
+    });
+  }
+  var SALE_KEYS=['id','type','ts','employee','payment','total','received','staff','discount','staffBy','items','tvaDetail','reprise','seq','prev','hash','ref','motif'];
+  function checkSale(s,chained){
+    if(!onlyKeys(s,SALE_KEYS)||!isNum(s.ts)||!isNum(s.total)||(s.received!=null&&!isNum(s.received)))bad('vente');
+    if(s.id!=null&&!RX_ID.test(s.id))bad('vente (identifiant)');
+    if(s.employee!=null&&!isStr(s.employee,60))bad('vente (caissier)');
+    if(s.payment!=null&&['espece','cb','chf'].indexOf(s.payment)<0)bad('vente (paiement)');
+    if(s.discount!=null&&!isNum(s.discount))bad('vente');
+    if(s.staff!=null&&typeof s.staff!=='boolean')bad('vente');
+    if(s.staffBy!=null&&!RX_ID.test(s.staffBy))bad('vente');
+    checkItems(s.items,chained);
+    if(chained){
+      if(['vente','annulation'].indexOf(s.type)<0||!isInt(s.seq)||!RX_HEX.test(s.prev)||!RX_HEX.test(s.hash))bad('vente N° '+s.seq);
+      if(!Array.isArray(s.tvaDetail)||!s.tvaDetail.every(function(t){return onlyKeys(t,['taux','ht','tva','ttc'])&&isNum(t.taux)&&isNum(t.ht)&&isNum(t.tva)&&isNum(t.ttc);}))bad('TVA de la vente N° '+s.seq);
+      if(s.ref!=null&&!isInt(s.ref))bad('vente N° '+s.seq);
+      if(s.motif!=null&&!isStr(s.motif,40))bad('vente N° '+s.seq);
+      if(s.reprise!=null&&typeof s.reprise!=='boolean')bad('vente N° '+s.seq);
+    }else if(s.seq!=null||s.prev!=null||s.hash!=null||s.type!=null)bad('vente');
+  }
+  function checkClot(c){
+    if(!onlyKeys(c,['type','kind','period','ts','firstTicket','lastTicket','nbVentes','nbAnnulations','totalTTC','tvaDetail','paiements','grandTotal','grandTotalAbs','seq','prev','hash']))bad('clôture');
+    if(['J','M','A'].indexOf(c.kind)<0||!/^\d{4}(-\d{2}(-\d{2})?)?$/.test(c.period)||!isInt(c.seq)||!RX_HEX.test(c.prev)||!RX_HEX.test(c.hash))bad('clôture');
+    ['ts','firstTicket','lastTicket','nbVentes','nbAnnulations','totalTTC','grandTotal','grandTotalAbs'].forEach(function(k){if(!isNum(c[k]))bad('clôture N° '+c.seq);});
+    if(!onlyKeys(c.paiements,['espece','cb','chf'])||!Array.isArray(c.tvaDetail))bad('clôture N° '+c.seq);
+  }
+  function checkJet(e){
+    if(!onlyKeys(e,['ts','type','user','detail','seq','prev','hash'])||!isNum(e.ts)||!/^[A-Z_]{1,40}$/.test(e.type)||!isStr(e.user,60)||!isStr(e.detail,300)||!isInt(e.seq)||!RX_HEX.test(e.prev)||!RX_HEX.test(e.hash))bad('journal');
+  }
+  function cleanPrints(o){var out={};if(!plain(o))return out;Object.keys(o).forEach(function(k){if(/^\d{1,9}$/.test(k)&&isInt(o[k])&&o[k]>=0&&o[k]<100000)out[k]=o[k];});return out;}
+  function cleanShop(o){if(!plain(o))return null;function s(x,m){return isStr(x,m)?x:'';}return {name:s(o.name,40)||'Market Place Épicerie',address:s(o.address,80),siret:/^\d{14}$/.test(o.siret)?o.siret:'',tvaNum:s(o.tvaNum,15)};}
+
+  $('#search').addEventListener('input',function(e){search=e.target.value.toLowerCase().trim();renderProducts();});
+
+  // ---- TICKET ----
+  function r2(x){return Math.round(x*100)/100;}
+  function byId(id){return products.filter(function(p){return p.id===id;})[0];}
+  // Remise employé −40% : produits alimentaires + boissons NON alcoolisées uniquement.
+  // Exclus : alcools et non-alimentaire (hygiène, entretien, animalerie, bébé, divers).
+  var NON_REMISE=['Alcools','Alcool','Hygiène','Entretien','Animalerie','Bébé','Divers'];
+  function isRemisable(p){
+    if(!p)return false;
+    if(p.elig===true)return true;
+    if(p.elig===false)return false;
+    return NON_REMISE.indexOf(p.cat)<0;
+  }
+  var staffDiscount=false;
+  var LS_STAFFUSE='epicerie_staffuse_v1';
+  function todayKey(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');}
+  function staffUseMap(){return load(LS_STAFFUSE,{})||{};}
+  function staffUsedToday(id){return staffUseMap()[id]===todayKey();}
+  function markStaffUsed(id){var m=staffUseMap();m[id]=todayKey();save(LS_STAFFUSE,m);}
+  function updateStaffUI(){
+    var w=$('#staffWarn'),b=$('#staffBtn');if(!b)return;
+    b.disabled=false; // toujours cliquable : le contrôle 1/jour se fait au clic (avec message)
+    if(currentUser&&staffUsedToday(currentUser.id)){
+      if(w){w.innerHTML='✅ Remise employé déjà utilisée aujourd\'hui ('+escapeHtml(currentUser.name)+'). Prochaine possible demain.';w.style.color='var(--brand-dark)';w.style.background='var(--brand-soft)';w.style.borderColor='var(--line)';}
+    }else{
+      if(w){w.innerHTML='⚠️ Avantage réservé aux employés — 1 ticket/jour, max 2 boissons sans alcool + 2 articles alimentaires. Interdit pour un client.';w.style.color='var(--warn)';w.style.background='#fff7ed';w.style.borderColor='#fed7aa';}
+    }
+  }
+  // Groupe de remise : 'drink' (boisson sans alcool), 'food' (alimentaire éligible), ou null
+  var STAFF_CAP_DRINK=2, STAFF_CAP_FOOD=2;
+  function staffGroup(p){
+    if(!isRemisable(p))return null;
+    return (p&&p.cat==='Boissons')?'drink':'food';
+  }
+  // Alloue la remise : max 2 boissons + 2 articles alimentaires sur le ticket
+  function computeStaff(){
+    var capD=STAFF_CAP_DRINK, capF=STAFF_CAP_FOOD, perLine={}, total=0;
+    cart.forEach(function(l){
+      var grp=staffDiscount?staffGroup(byId(l.id)):null;
+      var d=0;
+      if(grp){
+        var cap=grp==='drink'?capD:capF;
+        d=Math.min(l.qty,cap);
+        if(grp==='drink')capD-=d; else capF-=d;
+      }
+      perLine[l.id]=d;
+      total+=d*l.price*0.6+(l.qty-d)*l.price;
+    });
+    return {total:r2(total),perLine:perLine};
+  }
+  function addToCart(p){
+    var line=cart.filter(function(l){return l.id===p.id;})[0];
+    if(line){line.qty++;}else{cart.push({id:p.id,name:p.name,price:p.price,qty:1});}
+    renderCart();
+  }
+  function changeQty(id,d){
+    var line=cart.filter(function(l){return l.id===id;})[0];
+    if(!line)return;
+    line.qty+=d;
+    if(line.qty<=0){cart=cart.filter(function(l){return l.id!==id;});}
+    renderCart();
+  }
+  function cartBase(){var t=0;cart.forEach(function(l){t+=l.price*l.qty;});return r2(t);}
+  function cartTotal(){return computeStaff().total;}
+  function cartDiscount(){return r2(cartBase()-cartTotal());}
+  function renderCart(){
+    var box=$('#lines'); box.innerHTML='';
+    if(!cart.length){box.innerHTML='<div class="empty">Aucun article.<br>Touchez un produit pour l\'ajouter.</div>';}
+    var st=computeStaff();
+    cart.forEach(function(l){
+      var row=el('div','line');
+      var info=el('div','ln');
+      var d=st.perLine[l.id]||0;
+      var lineSum=d*l.price*0.6+(l.qty-d)*l.price;
+      var tag=d>0?' <span class="rem-tag">-40% ×'+d+'</span>':'';
+      var note=(d>0&&d<l.qty)?' <span style="color:var(--muted);font-size:11px">('+d+' remisé'+(d>1?'s':'')+' / '+l.qty+')</span>':'';
+      info.innerHTML='<div class="lname">'+escapeHtml(l.name)+tag+'</div><div class="lunit">'+eur(l.price)+note+'</div>';
+      var qty=el('div','qty');
+      var minus=el('button','qbtn');minus.textContent='−';minus.addEventListener('click',function(){changeQty(l.id,-1);});
+      var qn=el('span','qn');qn.textContent=l.qty;
+      var plus=el('button','qbtn');plus.textContent='+';plus.addEventListener('click',function(){changeQty(l.id,1);});
+      qty.appendChild(minus);qty.appendChild(qn);qty.appendChild(plus);
+      var sum=el('div','lsum');sum.textContent=eur(r2(lineSum));
+      row.appendChild(info);row.appendChild(qty);row.appendChild(sum);
+      box.appendChild(row);
+    });
+    var sb=$('#staffBtn');if(sb)sb.classList.toggle('active',staffDiscount);
+    var dr=$('#discRow');
+    if(dr){
+      var d=cartDiscount();
+      if(staffDiscount&&d>0){dr.style.display='flex';dr.innerHTML='<span>Remise employé −40%</span><span>−'+eur(d)+'</span>';}
+      else{dr.style.display='none';}
+    }
+    $('#total').textContent=eur(cartTotal());
+    $('#payBtn').disabled=cart.length===0;
+  }
+  $('#clearBtn').addEventListener('click',function(){
+    // la remise employé ne doit jamais rester active pour le client suivant
+    if(cart.length)uiConfirm('Annuler le ticket en cours ?',function(){logEvent('PANIER_ABANDONNE',cart.length+' ligne(s), '+eur(cartTotal()));cart=[];staffDiscount=false;renderCart();});
+    else if(staffDiscount){staffDiscount=false;renderCart();}
+  });
+
+  // ---- PRODUITS (gestion) ----
+  function renderProdList(){
+    var box=$('#prodList'); box.innerHTML='';
+    if(!products.length){box.innerHTML='<div class="empty">Aucun produit enregistré.</div>';return;}
+    products.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
+      var row=el('div','prow');
+      var info=el('div','pi');info.innerHTML='<b>'+escapeHtml(p.name)+'</b>'+(p.pending?' <span class="rem-tag" style="background:var(--warn);display:inline">À valider</span>':'')+'<span>'+escapeHtml(p.cat||'—')+'</span>';
+      var price=el('div','pp');price.textContent=eur(p.price);
+      row.appendChild(info);row.appendChild(price);
+      // Modification : gérant partout ; employé uniquement sur SES propres articles
+      var isG=currentUser&&currentUser.role==='gerant';
+      var mine=currentUser&&p.by===currentUser.id;
+      if(isG||mine){
+        var edit=el('button','icon-btn');edit.textContent='✎';edit.title=isG?'Modifier':'Modifier (votre article)';
+        edit.addEventListener('click',function(){startEdit(p);});
+        row.appendChild(edit);
+      }else{
+        var lk=el('span','icon-btn');lk.textContent='🔒';lk.title='Prix verrouillé — modifiable par le gérant uniquement';lk.style.opacity='.4';
+        row.appendChild(lk);
+      }
+      // Suppression réservée au gérant
+      if(currentUser&&currentUser.role==='gerant'){
+        var del=el('button','icon-btn del');del.textContent='🗑';del.title='Supprimer';
+        del.addEventListener('click',function(){
+          uiConfirm('Supprimer « '+p.name+' » ?',function(){logEvent('PRODUIT_SUPPRIME',p.name);products=products.filter(function(x){return x.id!==p.id;});save(LS_PROD,products);renderProdList();renderCats();renderProducts();});
+        });
+        row.appendChild(del);
+      }
+      box.appendChild(row);
+    });
+  }
+  function startEdit(p){
+    $('#fId').value=p.id;$('#fName').value=p.name;$('#fPrice').value=p.price;$('#fCat').value=p.cat||'';$('#fBarcode').value=p.barcode||'';
+    $('#fCost').value=(p.cost!=null?p.cost:'');
+    $('#fElig').checked=isRemisable(p);
+    $('#fTva').value=(p.tva!=null?String(p.tva):'');
+    $('#formTitle').textContent='Modifier le produit';$('#saveProd').textContent='Enregistrer';
+    $('#fName').focus();window.scrollTo(0,0);
+  }
+  function resetForm(){
+    $('#fId').value='';$('#fName').value='';$('#fPrice').value='';$('#fCat').value='';$('#fBarcode').value='';
+    $('#fCost').value='';$('#fElig').checked=true;$('#fTva').value='';
+    $('#formTitle').textContent='Ajouter un produit';$('#saveProd').textContent='Ajouter';
+  }
+  $('#saveProd').addEventListener('click',function(){
+    var name=$('#fName').value.trim();
+    var rawPrice=String($('#fPrice').value).trim().replace(/\s|€/g,'');
+    var price=/^\d+([.,]\d{1,2})?$/.test(rawPrice)?parseFloat(rawPrice.replace(',','.')):NaN;
+    var cat=$('#fCat').value.trim()||'Divers';
+    var barcode=$('#fBarcode').value.trim();
+    if(!name){uiAlert('Indiquez un nom.');return;}
+    if(!safeName(name)||!safeName(cat)){uiAlert('Ce nom n\'est pas autorisé.');return;}
+    if(barcode&&!/^[0-9A-Za-z-]{1,32}$/.test(barcode)){uiAlert('Code-barres invalide (chiffres et lettres uniquement).');return;}
+    var isEmp=!(currentUser&&currentUser.role==='gerant');
+    if(isEmp&&categories().indexOf(cat)<0){uiAlert('Choisissez un rayon existant :\n'+categories().slice(1).join(', '));return;}
+    if(barcode){
+      var dup=products.filter(function(p){return p.barcode===barcode&&p.id!==$('#fId').value;})[0];
+      if(dup){uiAlert('Ce code-barres est déjà utilisé par « '+dup.name+' ».\nUn code-barres ne peut correspondre qu\'à un seul produit.');return;}
+    }
+    if(isNaN(price)||price<0||price>100000){uiAlert('Indiquez un prix valide (0 à 100 000 €).');return;}
+    if(isEmp&&price<0.05){uiAlert('Prix trop bas : seul le gérant peut créer un article à moins de 0,05 €.');return;}
+    price=Math.round(price*100)/100;
+    var isG=currentUser&&currentUser.role==='gerant';
+    // prix d'achat & éligibilité : gérant uniquement
+    var cost=null, hasCost=false;
+    if(isG){var cv=$('#fCost').value.trim(); if(cv!==''){var c=parseFloat(cv.replace(',','.')); if(!isNaN(c)&&c>=0){cost=Math.round(c*100)/100;hasCost=true;}}}
+    var elig=isG?$('#fElig').checked:undefined;
+    var tvaSel=isG?$('#fTva').value:'';
+    var id=$('#fId').value;
+    if(id){
+      // Sécurité : un employé ne peut modifier que SES propres articles
+      var target=products.filter(function(p){return p.id===id;})[0];
+      if(!isG&&(!target||target.by!==(currentUser&&currentUser.id))){
+        uiAlert('🔒 Seul le gérant peut modifier le prix d\'un article existant.\nVous ne pouvez modifier que les articles que vous avez ajoutés.');
+        return;
+      }
+      products.forEach(function(p){if(p.id===id){
+        if(p.price!==price)logEvent('PRIX_MODIFIE',p.name+' : '+eur(p.price)+' → '+eur(price));
+        p.name=name;p.price=price;p.cat=cat;p.barcode=barcode;
+        if(isG){ if(hasCost)p.cost=cost; else delete p.cost; p.elig=elig; if(tvaSel)p.tva=parseFloat(tvaSel); else delete p.tva; if(p.pending){delete p.pending;logEvent('PRODUIT_VALIDE',p.name);} }
+        else{ p.pending=true; p.tva=20; p.elig=false; }
+      }});
+    }else{
+      var np={id:uid(),name:name,price:price,cat:cat,barcode:barcode,by:(currentUser?currentUser.id:null)};
+      if(isG){ if(hasCost)np.cost=cost; np.elig=elig; if(tvaSel)np.tva=parseFloat(tvaSel); }
+      else{ np.pending=true; np.tva=20; np.elig=false; } // à valider par le gérant : TVA 20 %, pas de remise
+      products.push(np);logEvent('PRODUIT_AJOUTE',name+' '+eur(price));
+    }
+    save(LS_PROD,products);resetForm();renderProdList();renderCats();renderProducts();
+  });
+
+  // ---- MODALE PAIEMENT ----
+  var received="";
+  var payMethod='espece';
+  function setPayMethod(m){
+    payMethod=m;
+    $('#pmEspece').classList.toggle('active',m==='espece');
+    $('#pmCB').classList.toggle('active',m==='cb');
+    $('#pmCHF').classList.toggle('active',m==='chf');
+    var cash=(m==='espece'||m==='chf');
+    $('#cashUI').style.display=cash?'':'none';
+    $('#cbUI').style.display=m==='cb'?'':'none';
+    $('#chfNote').style.display=m==='chf'?'':'none';
+    $('#mTotal').textContent=eur(cartTotal())+(m==='chf'?' (= '+eur(cartTotal()).replace(' €',' CHF')+')':'');
+  }
+  $('#pmEspece').addEventListener('click',function(){setPayMethod('espece');});
+  $('#pmCB').addEventListener('click',function(){setPayMethod('cb');});
+  $('#pmCHF').addEventListener('click',function(){setPayMethod('chf');});
+  function openPay(){
+    received="";
+    setPayMethod('espece');
+    $('#mTotal').textContent=eur(cartTotal());
+    updateRecv();
+    buildQuick();buildKeys();
+    $('#overlay').classList.add('show');
+  }
+  function closePay(){$('#overlay').classList.remove('show');}
+  function updateRecv(){
+    var v=received===""?0:parseFloat(received);
+    $('#recv').textContent=(received===""?"0,00":received.replace('.',','));
+    var ch=v-cartTotal();
+    if(received!==""&&ch>=0){$('#change').textContent='À rendre : '+eur(ch);}
+    else if(received!==""){$('#change').textContent='Manque '+eur(Math.abs(ch));$('#change').style.color='var(--danger)';return;}
+    else {$('#change').textContent='';}
+    $('#change').style.color='var(--accent)';
+  }
+  function buildQuick(){
+    var q=$('#quick');q.innerHTML='';
+    var tot=cartTotal();
+    var opts=[tot,5,10,20,50];
+    var seen={};
+    opts.forEach(function(v){
+      v=Math.ceil(v*100)/100;if(v<tot||seen[v])return;seen[v]=1;
+      var b=el('button');b.textContent=(v===tot?'Appoint ':'')+eur(v);
+      b.addEventListener('click',function(){received=String(v);updateRecv();});
+      q.appendChild(b);
+    });
+  }
+  function buildKeys(){
+    var k=$('#keys');k.innerHTML='';
+    ['1','2','3','4','5','6','7','8','9',',','0','←'].forEach(function(key){
+      var b=el('button','key');b.textContent=key;
+      b.addEventListener('click',function(){press(key);});
+      k.appendChild(b);
+    });
+  }
+  function press(key){
+    if(key==='←'){received=received.slice(0,-1);}
+    else if(key===','){if(received.indexOf('.')<0)received=(received===''?'0':received)+'.';}
+    else{
+      if(received.indexOf('.')>=0&&received.split('.')[1].length>=2)return;
+      received+=key;
+    }
+    updateRecv();
+  }
+  $('#payBtn').addEventListener('click',openPay);
+  $('#cancelPay').addEventListener('click',closePay);
+  $('#overlay').addEventListener('click',function(e){if(e.target===$('#overlay'))closePay();});
+  $('#confirmPay').addEventListener('click',function(){
+    var tot=cartTotal();
+    if(payMethod==='cb'){ finalizeSale(tot,tot); return; }
+    var v=received===""?tot:parseFloat(received);
+    if(v<tot){ uiConfirm('Montant reçu inférieur au total. Valider quand même ?',function(){finalizeSale(tot,v);}); return; }
+    finalizeSale(tot,v);
+  });
+  function finalizeSale(tot,v){
+    if(!cart.length||!currentUser){closePay();return;} // jamais de ticket vide ni sans caissier
+    var disc=cartDiscount();
+    var stAlloc=computeStaff();
+    var saleItems=[];
+    cart.forEach(function(l){
+      var d=stAlloc.perLine[l.id]||0;
+      var p=byId(l.id), cat=p?p.cat:undefined, tva=tvaOf(p);
+      if(d>0)saleItems.push({pid:l.id,name:l.name,cat:cat,price:r2(l.price*0.6),qty:d,tva:tva,base:l.price});
+      if(l.qty-d>0)saleItems.push({pid:l.id,name:l.name,cat:cat,price:l.price,qty:l.qty-d,tva:tva});
+    });
+    // Vente enregistrée de façon inaltérable : numéro suivant + empreinte chaînée
+    var sale=chainAppend(sales,{id:uid(),type:'vente',ts:Date.now(),employee:currentUser.name,payment:payMethod,
+      total:tot,received:(received===""?tot:v),
+      staff:staffDiscount&&disc>0,discount:disc,staffBy:currentUser.id,
+      items:saleItems,tvaDetail:tvaBreak(saleItems)},LS_SALES);
+    runClosures();
+    if(sale.staff&&currentUser){markStaffUsed(currentUser.id);} // consomme l'avantage du jour
+    lastSale=sale;$('#lastReceiptBtn').disabled=false;
+    staffDiscount=false; // la remise ne reste pas active pour le client suivant
+    updateStaffUI();
+    cart=[];renderCart();closePay();
+    // retour visuel (pas d'impression automatique — ticket seulement si le client le demande)
+    var pb=$('#payBtn');var old=pb.textContent;pb.textContent='✓ Encaissé';setTimeout(function(){pb.textContent=old;},900);
+  }
+  // Remise employé (simple touche de caisse, 1 ticket/jour/compte, tracée dans l'Analyse)
+  $('#staffBtn').addEventListener('click',function(){
+    if(staffDiscount){ staffDiscount=false; renderCart(); return; } // désactivation immédiate
+    if(!currentUser){uiAlert('Connecte-toi avec ton compte employé pour utiliser la remise.');return;}
+    function activate(){
+      uiConfirm('AVANTAGE EMPLOYÉ — usage personnel strict.\n\n• Réservé à l\'employé connecté : '+currentUser.name+'\n• 1 seul ticket par jour\n• Max 2 boissons sans alcool + 2 articles alimentaires remisés\n• INTERDIT pour un client\n\nActiver la remise −40% ?',function(){staffDiscount=true;renderCart();});
+    }
+    if(staffUsedToday(currentUser.id)){
+      if(currentUser.role==='gerant'){
+        uiConfirm('Remise déjà utilisée aujourd\'hui par ce compte.\nEn tant que gérant, forcer une nouvelle remise ?',function(){logEvent('REMISE_FORCEE','2e remise employé du jour');activate();});
+      }else{
+        uiAlert('⚠️ Remise employé déjà utilisée aujourd\'hui avec ce compte.\n\nLimite : 1 ticket par jour et par employé.');
+      }
+    }else{ activate(); }
+  });
+
+  // ---- TICKETS DE CAISSE (impression à la demande) ----
+  var lastSale=null;
+  function shopHeaderHTML(){
+    return '<div class="rc-logo">'+escapeHtml((shop.name||'MARKET PLACE ÉPICERIE').toUpperCase())+'</div>'
+      +(shop.address?'<div class="rc-c">'+escapeHtml(shop.address)+'</div>':'')
+      +(shop.siret?'<div class="rc-c">SIRET '+escapeHtml(shop.siret)+'</div>':'')
+      +(shop.tvaNum?'<div class="rc-c">TVA '+escapeHtml(shop.tvaNum)+'</div>':'');
+  }
+  function tvaTableHTML(det){
+    if(!det||!det.length)return '';
+    return '<div class="rc-sub" style="margin:4px 0 0">Taux · HT · TVA · TTC</div>'+det.map(function(t){
+      return '<div class="rc-item" style="font-size:11px"><span>'+fmtTaux(t.taux)+'</span><span>'+eur(t.ht)+' · '+eur(t.tva)+' · '+eur(t.ttc)+'</span></div>';
+    }).join('');
+  }
+  function receiptHTML(s,dupNum){
+    var d=new Date(s.ts);
+    var annul=s.type==='annulation';
+    var art=s.items.reduce(function(a,i){return a+Math.abs(i.qty);},0);
+    var lines=s.items.map(function(i){
+      var base=(i.base&&i.base>i.price)?'<div class="rc-sub">'+escapeHtml(i.qty)+' × <s>'+eur(i.base)+'</s> '+eur(i.price)+'  (-40%)</div>':'<div class="rc-sub">'+escapeHtml(i.qty)+' × '+eur(i.price)+'</div>';
+      return '<div class="rc-item"><span>'+escapeHtml(i.name)+'</span><span>'+eur(i.price*i.qty)+'</span></div>'+base;
+    }).join('');
+    var rendu=r2((s.received||s.total)-s.total);
+    return '<div class="rc">'
+      + shopHeaderHTML()
+      +'<div class="rc-sep"></div>'
+      +'<div class="rc-h">'+(annul?'ANNULATION':'TICKET DE CAISSE')+'</div>'
+      +(dupNum?'<div class="rc-h" style="letter-spacing:1px">*** DUPLICATA N° '+escapeHtml(dupNum)+' ***</div>':'')
+      +'<div class="rc-c">N° '+(s.seq?seqLabel(s.seq):'—')+' · '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</div>'
+      +'<div class="rc-c">Caissier : '+escapeHtml(s.employee||'—')+'</div>'
+      +(annul?'<div class="rc-c">Annule le ticket N° '+escapeHtml(seqLabel(s.ref))+(s.motif?' · '+escapeHtml(s.motif):'')+'</div>':'')
+      +'<div class="rc-sep"></div>'
+      + lines
+      +'<div class="rc-sep"></div>'
+      +(s.staff&&s.discount>0?'<div class="rc-item"><span>Remise employé</span><span>−'+eur(s.discount)+'</span></div>':'')
+      +'<div class="rc-item rc-tot"><span>TOTAL TTC ('+art+' art.)</span><span>'+eur(s.total)+'</span></div>'
+      + tvaTableHTML(s.tvaDetail)
+      +'<div class="rc-sep"></div>'
+      +(annul?'<div class="rc-item"><span>Remboursement</span><span>'+({cb:'Carte bancaire',chf:'Espèces',espece:'Espèces'}[s.payment]||'Espèces')+'</span></div>':s.payment==='cb'
+        ? '<div class="rc-item"><span>Paiement</span><span>Carte bancaire</span></div>'
+        : s.payment==='chf'
+          ? '<div class="rc-item"><span>Payé en CHF</span><span>1 CHF = 1 €</span></div><div class="rc-item"><span>Reçu (CHF)</span><span>'+eur(s.received||s.total).replace(' €',' CHF')+'</span></div><div class="rc-item"><span>Rendu (€)</span><span>'+eur(rendu)+'</span></div>'
+          : '<div class="rc-item"><span>Espèces reçu</span><span>'+eur(s.received||s.total)+'</span></div><div class="rc-item"><span>Rendu</span><span>'+eur(rendu)+'</span></div>')
+      +'<div class="rc-sep"></div>'
+      +'<div class="rc-f">Merci de votre visite !</div>'
+      +(s.hash?'<div class="rc-f" style="font-size:9px;word-break:break-all">Empreinte '+s.hash.slice(0,16)+'</div>':'')
+      +'</div>';
+  }
+  function showReceipts(html,title){
+    $('#receiptArea').innerHTML=html;
+    $('#receiptTitle').textContent=title||'Ticket de caisse';
+    $('#receiptOverlay').classList.add('show');
+  }
+  // 1re édition = original ; toute réédition = DUPLICATA numéroté et tracé au journal
+  function nextPrint(s){
+    var m=printsMap(),k=String(s.seq),n=m[k]||0;m[k]=n+1;save(LS_PRINTS,m);
+    return n; // 0 = original, sinon numéro de duplicata
+  }
+  function printReceipt(s){
+    if(!s)return;
+    var dup=nextPrint(s);
+    if(dup)logEvent('DUPLICATA','Ticket N° '+seqLabel(s.seq)+' — duplicata n° '+dup);
+    showReceipts(receiptHTML(s,dup),dup?'Duplicata':'Ticket de caisse');
+  }
+  function printReceiptsList(list,title){
+    if(!list.length){uiAlert('Aucun ticket sur cette période.');return;}
+    var html=list.slice().sort(function(a,b){return a.seq-b.seq;}).map(function(s){return receiptHTML(s,nextPrint(s)||0);}).join('');
+    logEvent('DUPLICATA',list.length+' ticket(s) réédités — '+(title||''));
+    showReceipts(html,title||'Tickets de la journée');
+  }
+  // ---- CLÔTURES (journalières, mensuelles, annuelles) ----
+  function dKey(ts){var d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+  var KIND={J:'Clôture journalière',M:'Clôture mensuelle',A:'Clôture annuelle'};
+  function periodKey(kind,ts){var k=dKey(ts);return kind==='J'?k:kind==='M'?k.slice(0,7):k.slice(0,4);}
+  function buildClot(kind,period,list){
+    var ttc=0,nV=0,nA=0,pay={espece:0,cb:0,chf:0},items=[];
+    list.forEach(function(s){
+      ttc+=s.total; if(s.type==='annulation')nA++; else nV++;
+      pay[s.payment||'espece']=(pay[s.payment||'espece']||0)+s.total;
+      items=items.concat(s.items);
+    });
+    var lastSeq=list.length?list[list.length-1].seq:0;
+    var gt=0,gtAbs=0;sales.forEach(function(s){if(s.seq<=lastSeq){gt+=s.total;gtAbs+=Math.abs(s.total);}});
+    return {type:'cloture',kind:kind,period:period,ts:Date.now(),
+      firstTicket:list.length?list[0].seq:0,lastTicket:lastSeq,nbVentes:nV,nbAnnulations:nA,
+      totalTTC:r2(ttc),tvaDetail:tvaBreak(items),paiements:{espece:r2(pay.espece),cb:r2(pay.cb),chf:r2(pay.chf)},
+      grandTotal:r2(gt),grandTotalAbs:r2(gtAbs)};
+  }
+  // Clôture automatiquement toute période TERMINÉE qui contient des ventes (rien n'est effacé)
+  function runClosures(){
+    var done={};clotures.forEach(function(c){done[c.kind+c.period]=1;});
+    var now=Date.now(),created=0;
+    ['J','M','A'].forEach(function(kind){
+      var cur=periodKey(kind,now),groups={},order=[];
+      sales.forEach(function(s){var k=periodKey(kind,s.ts);if(k>=cur||done[kind+k])return;if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(s);});
+      order.sort().forEach(function(k){chainAppend(clotures,buildClot(kind,k,groups[k]),LS_CLOT);logEvent('CLOTURE',KIND[kind]+' '+k);created++;});
+    });
+    return created;
+  }
+  function clotHTML(c,provisoire){
+    var lbl=escapeHtml(String(c.period).split('-').reverse().join('/'));
+    return '<div class="rc">'+shopHeaderHTML()+'<div class="rc-sep"></div>'
+      +'<div class="rc-h">'+(provisoire?'RAPPORT X (PROVISOIRE)':'TICKET Z')+'</div>'
+      +'<div class="rc-c">'+(provisoire?'Journée en cours':KIND[c.kind])+' · '+lbl+'</div>'
+      +(c.seq?'<div class="rc-c">Clôture N° '+seqLabel(c.seq)+'</div>':'')
+      +'<div class="rc-c">Tickets N° '+seqLabel(c.firstTicket)+' à '+seqLabel(c.lastTicket)+'</div>'
+      +'<div class="rc-sep"></div>'
+      +'<div class="rc-item"><span>Ventes</span><span>'+c.nbVentes+'</span></div>'
+      +'<div class="rc-item"><span>Annulations</span><span>'+c.nbAnnulations+'</span></div>'
+      +'<div class="rc-item rc-tot"><span>TOTAL TTC</span><span>'+eur(c.totalTTC)+'</span></div>'
+      +tvaTableHTML(c.tvaDetail)
+      +'<div class="rc-sep"></div>'
+      +'<div class="rc-item"><span>Espèces €</span><span>'+eur(c.paiements.espece)+'</span></div>'
+      +'<div class="rc-item"><span>Carte</span><span>'+eur(c.paiements.cb)+'</span></div>'
+      +'<div class="rc-item"><span>Espèces CHF</span><span>'+eur(c.paiements.chf).replace(' €',' CHF')+'</span></div>'
+      +'<div class="rc-sep"></div>'
+      +'<div class="rc-item"><span>Grand total perpétuel</span><span>'+eur(c.grandTotal)+'</span></div>'
+      +'<div class="rc-item"><span>Cumul en valeur absolue</span><span>'+eur(c.grandTotalAbs)+'</span></div>'
+      +(c.hash?'<div class="rc-f" style="font-size:9px;word-break:break-all">Empreinte '+c.hash.slice(0,16)+'</div>':'')
+      +'</div>';
+  }
+  // ---- ANNULATION D'UN TICKET (ticket négatif chaîné, l'original n'est jamais modifié) ----
+  function cancelOf(seq){return sales.filter(function(x){return x.type==='annulation'&&x.ref===seq;})[0];}
+  function cancelSale(s){
+    if(!currentUser||currentUser.role!=='gerant'){uiAlert('Seul le gérant peut annuler un ticket.');return;}
+    if(s.type==='annulation'){uiAlert('Ce ticket est déjà une annulation.');return;}
+    if(cancelOf(s.seq)){uiAlert('Ce ticket a déjà été annulé.');return;}
+    uiChoice('Annuler le ticket N° '+seqLabel(s.seq)+' ('+eur(s.total)+') ?\n\nUn ticket d\'annulation (montant négatif) sera enregistré. Le ticket d\'origine reste conservé.\n\nMotif :',
+      ['Erreur de saisie','Retour produit','Client a renoncé','Autre'],function(motif){
+      var items=s.items.map(function(i){var o={pid:i.pid,name:i.name,cat:i.cat,price:i.price,qty:-i.qty,tva:i.tva!=null?i.tva:5.5};return o;});
+      var a=chainAppend(sales,{id:uid(),type:'annulation',ts:Date.now(),employee:currentUser.name,payment:s.payment||'espece',
+        total:-s.total,received:-s.total,staff:false,discount:0,staffBy:null,ref:s.seq,motif:motif,
+        items:items,tvaDetail:tvaBreak(items)},LS_SALES);
+      logEvent('ANNULATION','Ticket N° '+seqLabel(s.seq)+' annulé par N° '+seqLabel(a.seq)+' ('+eur(s.total)+') — '+motif);
+      runClosures();renderReport();printReceipt(a);
+    });
+  }
+  // Dialogue à choix multiples (motif)
+  function uiChoice(msg,options,onPick){
+    var ov=el('div','ui-ov');
+    ov.innerHTML='<div class="ui-box"><div class="ui-msg"></div><div class="ui-choices" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div><div class="ui-acts"><button class="ui-btn ui-no">Retour</button></div></div>';
+    ov.querySelector('.ui-msg').textContent=msg;
+    var box=ov.querySelector('.ui-choices');
+    options.forEach(function(o){var b=el('button','ui-btn ui-yes');b.textContent=o;b.addEventListener('click',function(){ov.remove();onPick(o);});box.appendChild(b);});
+    ov.querySelector('.ui-no').addEventListener('click',function(){ov.remove();});
+    document.body.appendChild(ov);
+  }
+  $('#lastReceiptBtn').addEventListener('click',function(){printReceipt(lastSale);});
+  $('#receiptClose').addEventListener('click',function(){$('#receiptOverlay').classList.remove('show');});
+  $('#receiptPrint').addEventListener('click',function(){window.print();});
+  $('#receiptOverlay').addEventListener('click',function(e){if(e.target===$('#receiptOverlay'))$('#receiptOverlay').classList.remove('show');});
+
+  // ---- JOURNÉE ----
+  function pad(x){return String(x).padStart(2,'0');}
+  var FR_DAYS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var FR_MONTHS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function sameDay(ts,ref){var d=new Date(ts),n=ref?new Date(ref):new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
+  function weekBounds(){
+    var n=new Date();n.setHours(0,0,0,0);
+    var day=(n.getDay()+6)%7; // lundi=0
+    var start=new Date(n);start.setDate(n.getDate()-day);
+    var end=new Date(start);end.setDate(start.getDate()+7);
+    return [start.getTime(),end.getTime()];
+  }
+  var currentPeriod='jour';
+  function inPeriod(ts){
+    if(currentPeriod==='jour')return sameDay(ts);
+    if(currentPeriod==='semaine'){var b=weekBounds();return ts>=b[0]&&ts<b[1];}
+    var d=new Date(ts),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();
+  }
+  function periodLabel(){
+    var n=new Date();
+    if(currentPeriod==='jour')return "Aujourd'hui — "+FR_DAYS[n.getDay()]+' '+n.getDate()+' '+FR_MONTHS[n.getMonth()];
+    if(currentPeriod==='semaine'){var b=weekBounds();var s=new Date(b[0]),e=new Date(b[1]-1);return 'Semaine du '+s.getDate()+' '+FR_MONTHS[s.getMonth()]+' au '+e.getDate()+' '+FR_MONTHS[e.getMonth()];}
+    return FR_MONTHS[n.getMonth()].charAt(0).toUpperCase()+FR_MONTHS[n.getMonth()].slice(1)+' '+n.getFullYear();
+  }
+  function paymentSplitHTML(list,total){
+    if(!list.length)return '';
+    var esp=0,cb=0,chf=0,nE=0,nC=0,nH=0;
+    list.forEach(function(s){
+      if(s.payment==='cb'){cb+=s.total;nC++;}
+      else if(s.payment==='chf'){chf+=s.total;nH++;}
+      else {esp+=s.total;nE++;}
+    });
+    var tot=(total!=null?total:esp+cb+chf);
+    var chfStr=eur(chf).replace(' €',' CHF');
+    return '<div class="day-block"><h4>💳 Encaissements par mode de paiement</h4>'
+      +'<div class="mini-stat">'
+      +'<div class="ms"><div class="msv">'+eur(esp)+'</div><div class="msl">💶 Espèces € ('+nE+')</div></div>'
+      +'<div class="ms"><div class="msv">'+eur(cb)+'</div><div class="msl">💳 Carte CB ('+nC+')</div></div>'
+      +'<div class="ms"><div class="msv">'+chfStr+'</div><div class="msl">🇨🇭 Espèces CHF ('+nH+')</div></div>'
+      +'<div class="ms"><div class="msv">'+eur(tot)+'</div><div class="msl">Total encaissé</div></div>'
+      +'</div>'
+      +(chf>0?'<div class="insight" style="margin-top:4px">🇨🇭 CHF encaissés (tiroir séparé) : <b>'+chfStr+'</b> — à reverser/compter à part des euros.</div>':'')
+      +'</div>';
+  }
+  function renderReport(){
+    var list=sales.filter(function(s){return inPeriod(s.ts);});
+    var tot=0,items=0,perEmp={},perProd={},perDay={};
+    list.forEach(function(s){
+      tot+=s.total;
+      s.items.forEach(function(i){items+=i.qty;perProd[i.name]=(perProd[i.name]||0)+i.qty;});
+      var e=s.employee||'—';perEmp[e]=perEmp[e]||{n:0,t:0};perEmp[e].n++;perEmp[e].t+=s.total;
+      var dk=new Date(s.ts);dk.setHours(0,0,0,0);var key=dk.getTime();perDay[key]=perDay[key]||{n:0,t:0};perDay[key].n++;perDay[key].t+=s.total;
+    });
+    $('#dayTotal').textContent=eur(tot);
+    $('#dayTotal').nextElementSibling.textContent=currentPeriod==='jour'?'Chiffre du jour':currentPeriod==='semaine'?'Chiffre de la semaine':'Chiffre du mois';
+    var nVentes=list.filter(function(s){return s.type!=='annulation';}).length, nAnnul=list.length-nVentes;
+    $('#dayCount').textContent=nVentes+(nAnnul?' (+'+nAnnul+' annul.)':'');
+    $('#dayAvg').textContent=nVentes?eur(tot/nVentes):'0,00 €';
+    $('#dayItems').textContent=items;
+    $('#dayTitle').textContent=periodLabel();
+
+    // Répartition encaissements : espèces / carte
+    $('#payBreakdown').innerHTML=paymentSplitHTML(list,tot);
+    // TVA collectée par taux
+    var allItems=[];list.forEach(function(s){allItems=allItems.concat(s.items);});
+    var tb=tvaBreak(allItems);
+    if(tb.length){
+      var th='<div class="day-block"><h4>🧾 TVA collectée</h4>';
+      tb.forEach(function(t){th+='<div class="db-row"><span class="dbn">Taux '+fmtTaux(t.taux)+'<span class="dbs"> · HT '+eur(t.ht)+' · TTC '+eur(t.ttc)+'</span></span><b>'+eur(t.tva)+'</b></div>';});
+      var tvaTot=0;tb.forEach(function(t){tvaTot+=t.tva;});
+      th+='<div class="db-row"><span class="dbn">Total TVA</span><b>'+eur(r2(tvaTot))+'</b></div></div>';
+      $('#payBreakdown').innerHTML+=th;
+    }
+
+    // Ventes par employé
+    var eb=$('#empBreakdown');eb.innerHTML='';
+    var empNames=Object.keys(perEmp);
+    if(empNames.length){
+      empNames.sort(function(a,b){return perEmp[b].t-perEmp[a].t;});
+      var h='<div class="day-block"><h4>👥 Ventes par employé</h4>';
+      empNames.forEach(function(nm){h+='<div class="db-row"><span class="dbn">'+escapeHtml(nm)+'<span class="dbs"> · '+perEmp[nm].n+' ticket(s)</span></span><b>'+eur(perEmp[nm].t)+'</b></div>';});
+      h+='</div>';eb.innerHTML=h;
+    }
+
+    // Meilleures ventes
+    var tp=$('#topProducts');tp.innerHTML='';
+    var prodNames=Object.keys(perProd);
+    if(prodNames.length){
+      prodNames.sort(function(a,b){return perProd[b]-perProd[a];});
+      var h2='<div class="day-block"><h4>🏆 Meilleures ventes</h4>';
+      prodNames.slice(0,5).forEach(function(nm,i){h2+='<div class="db-row"><span class="dbn"><span class="db-rank">'+(i+1)+'</span>'+escapeHtml(nm)+'</span><b>'+perProd[nm]+'×</b></div>';});
+      h2+='</div>';tp.innerHTML=h2;
+    }
+
+    // Détail
+    var box=$('#salesList');box.innerHTML='';
+    if(!list.length){box.innerHTML='<div class="empty">Aucune vente sur cette période.</div>';$('#detailTitle').textContent='';return;}
+    if(currentPeriod==='jour'){
+      $('#detailTitle').textContent='Achats par employé';
+      // Regrouper les tickets par employé, une colonne chacun
+      var groups={};
+      list.forEach(function(s){var e=s.employee||'—';(groups[e]=groups[e]||[]).push(s);});
+      var names=Object.keys(groups).sort(function(a,b){
+        var ta=0,tb=0;groups[a].forEach(function(s){ta+=s.total;});groups[b].forEach(function(s){tb+=s.total;});return tb-ta;});
+      var cols=el('div','emp-cols');
+      names.forEach(function(nm){
+        var arr=groups[nm].slice().sort(function(a,b){return a.ts-b.ts;});
+        var tot=0;arr.forEach(function(s){tot+=s.total;});
+        var col=el('div','emp-col');
+        var h='<div class="emp-col-h"><span class="ecn">'+escapeHtml(nm)+'</span><span class="ect">'+eur(tot)+'<br>'+arr.length+' ticket(s)</span></div><div class="emp-col-body">';
+        arr.forEach(function(s){
+          var d=new Date(s.ts);
+          var itemsTxt=s.items.map(function(i){return i.qty+'× '+escapeHtml(i.name);}).join(', ');
+          var rendu=(s.received||s.total)-s.total;
+          var remTag=(s.staff&&s.discount>0)?' <span class="rem-tag">-40%</span>':'';
+          var isAnnul=s.type==='annulation', wasCancelled=!isAnnul&&cancelOf(s.seq);
+          if(isAnnul)remTag+=' <span class="rem-tag" style="background:var(--danger)">ANNULE '+seqLabel(s.ref)+'</span>';
+          if(wasCancelled)remTag+=' <span class="rem-tag" style="background:var(--muted)">ANNULÉ</span>';
+          var bst='border:1px solid var(--line);background:var(--card);border-radius:6px;cursor:pointer;font-size:12px;padding:1px 5px';
+          h+='<div class="tk"'+(wasCancelled?' style="opacity:.6"':'')+'><div class="tk-h"><span class="tkt">N° '+(s.seq?seqLabel(s.seq):'—')+' · '+pad(d.getHours())+':'+pad(d.getMinutes())+remTag+'</span><span style="display:flex;align-items:center;gap:6px">'+eur(s.total)+' <button class="tk-print" data-sid="'+s.id+'" title="Réimprimer (duplicata)" style="'+bst+'">🧾</button>'+((!isAnnul&&!wasCancelled)?'<button class="tk-cancel" data-sid="'+s.id+'" title="Annuler ce ticket" style="'+bst+';color:var(--danger)">↩</button>':'')+'</span></div><div class="tk-d">'+itemsTxt+'</div><div class="tk-f"><span>Reçu '+eur(s.received||s.total)+'</span><span>Rendu '+eur(rendu)+'</span></div></div>';
+        });
+        h+='</div>';
+        col.innerHTML=h;
+        cols.appendChild(col);
+      });
+      box.appendChild(cols);
+    }else{
+      $('#detailTitle').textContent='Détail par jour';
+      Object.keys(perDay).sort(function(a,b){return b-a;}).forEach(function(k){
+        var d=new Date(parseInt(k));
+        var row=el('div','sale');
+        row.innerHTML='<div class="sh"><span>'+FR_DAYS[d.getDay()]+' '+d.getDate()+' '+FR_MONTHS[d.getMonth()]+'</span><span>'+eur(perDay[k].t)+'</span></div><div class="sf"><span>'+perDay[k].n+' ticket(s)</span><span>Panier moyen '+eur(perDay[k].t/perDay[k].n)+'</span></div>';
+        box.appendChild(row);
+      });
+    }
+  }
+  document.querySelectorAll('#period .per-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('#period .per-btn').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');currentPeriod=b.dataset.per;renderReport();
+    });
+  });
+  // Réimpression d'un ticket depuis le Bilan
+  $('#salesList').addEventListener('click',function(e){
+    var b=e.target.closest('.tk-print'),c=e.target.closest('.tk-cancel');if(!b&&!c)return;
+    var id=(b||c).dataset.sid;
+    var s=sales.filter(function(x){return x.id===id;})[0];if(!s)return;
+    if(b)printReceipt(s);else cancelSale(s);
+  });
+  // Rapport X : situation provisoire de la journée en cours (n'enregistre rien)
+  $('#printXBtn').addEventListener('click',function(){
+    var list=sales.filter(function(s){return sameDay(s.ts);});
+    if(!list.length){uiAlert('Aucune vente aujourd\'hui.');return;}
+    showReceipts(clotHTML(buildClot('J',dKey(Date.now()),list),true),'Rapport X');
+  });
+  // Impression / sauvegarde de tous les tickets de la période affichée
+  $('#printDayBtn').addEventListener('click',function(){
+    var list=sales.filter(function(s){return inPeriod(s.ts);});
+    printReceiptsList(list,'Tickets — '+periodLabel());
+  });
+
+  // ================= ANALYSE =================
+  var anaPeriod='jour';
+  function anaInPeriod(ts){
+    var now=new Date(), d=new Date(ts);
+    if(anaPeriod==='tout')return true;
+    if(anaPeriod==='jour')return sameDay(ts);
+    var start=new Date();start.setHours(0,0,0,0);
+    if(anaPeriod==='semaine')start.setDate(start.getDate()-6);
+    else if(anaPeriod==='mois')start.setDate(start.getDate()-29);
+    return d.getTime()>=start.getTime();
+  }
+  function anaScopeLabel(){
+    return anaPeriod==='jour'?"Aujourd'hui":anaPeriod==='semaine'?"7 derniers jours":anaPeriod==='mois'?"30 derniers jours":"Tout l'historique";
+  }
+  function fillProdSelect(){
+    var sel=$('#anaProdSel');var cur=sel.value;
+    var opts='<option value="">— Choisir un produit —</option>';
+    products.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
+      opts+='<option value="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</option>';
+    });
+    sel.innerHTML=opts;if(cur)sel.value=cur;
+  }
+  function renderAnalyse(){
+    $('#anaScope').textContent='Période : '+anaScopeLabel();
+    var list=sales.filter(function(s){return anaInPeriod(s.ts);});
+    // agrégats produits
+    var pq={},pc={},catQ={},catC={},hourC={},tot=0,artTot=0;
+    list.forEach(function(s){
+      tot+=s.total;
+      s.items.forEach(function(i){
+        pq[i.name]=(pq[i.name]||0)+i.qty;
+        pc[i.name]=(pc[i.name]||0)+i.price*i.qty;
+        artTot+=i.qty;
+      });
+      var h=new Date(s.ts).getHours();hourC[h]=(hourC[h]||0)+s.total;
+    });
+    // rayon via table produit->cat
+    var catOf={};products.forEach(function(p){catOf[p.name]=p.cat||'Divers';});
+    Object.keys(pq).forEach(function(nm){var c=catOf[nm]||'Divers';catQ[c]=(catQ[c]||0)+pq[nm];catC[c]=(catC[c]||0)+pc[nm];});
+
+    // ---- INSIGHTS ----
+    var ins=$('#anaInsights');ins.innerHTML='';
+    if(!list.length){ins.innerHTML='<div class="insight warn">Aucune vente sur cette période.</div>';
+      $('#anaPay').innerHTML='';$('#anaTop').innerHTML='';$('#anaFlop').innerHTML='';$('#anaCats').innerHTML='';$('#anaProd').innerHTML='';$('#anaStaff').innerHTML='';$('#anaProfit').innerHTML='';return;}
+    $('#anaPay').innerHTML=paymentSplitHTML(list,tot);
+    var names=Object.keys(pq);
+    var topN=names.slice().sort(function(a,b){return pq[b]-pq[a];});
+    var best=topN[0], worst=topN[topN.length-1];
+    // heure de pointe
+    var bestHour=Object.keys(hourC).sort(function(a,b){return hourC[b]-hourC[a];})[0];
+    // produits jamais vendus sur la période
+    var neverSold=products.filter(function(p){return !pq[p.name];}).length;
+
+    var mini='<div class="mini-stat">'
+      +'<div class="ms"><div class="msv">'+eur(tot)+'</div><div class="msl">Chiffre d\'affaires</div></div>'
+      +'<div class="ms"><div class="msv">'+list.length+'</div><div class="msl">Tickets</div></div>'
+      +'<div class="ms"><div class="msv">'+eur(list.length?tot/list.length:0)+'</div><div class="msl">Panier moyen</div></div>'
+      +'<div class="ms"><div class="msv">'+artTot+'</div><div class="msl">Articles vendus</div></div>'
+      +'</div>';
+    ins.innerHTML=mini
+      +'<div class="insight">⭐ Produit vedette : <b>'+escapeHtml(best)+'</b> — '+pq[best]+' vendus ('+eur(pc[best])+', soit '+Math.round(pc[best]/tot*100)+'% du CA).</div>'
+      +'<div class="insight">🐌 Le moins actif : <b>'+escapeHtml(worst)+'</b> — seulement '+pq[worst]+' vendu(s).</div>'
+      +(bestHour!==undefined?'<div class="insight">⏰ Heure de pointe : <b>'+bestHour+'h–'+(parseInt(bestHour)+1)+'h</b> ('+eur(hourC[bestHour])+').</div>':'')
+      +(neverSold>0?'<div class="insight warn">📦 <b>'+neverSold+'</b> produit(s) n\'ont réalisé aucune vente sur cette période — à surveiller (stock dormant).</div>':'');
+
+    // ---- TOP / FLOP (barres) ----
+    function bars(container,arr,lo){
+      var max=arr.length?pq[arr[0]]:1;
+      var h='';arr.forEach(function(nm){
+        var w=Math.max(4,Math.round(pq[nm]/max*100));
+        h+='<div class="bar-row"><span class="bar-name">'+escapeHtml(nm)+'</span><span class="bar-track"><span class="bar-fill'+(lo?' lo':'')+'" style="width:'+w+'%"></span></span><span class="bar-val">'+pq[nm]+'× · '+eur(pc[nm])+'</span></div>';
+      });
+      container.innerHTML=h;
+    }
+    bars($('#anaTop'),topN.slice(0,8),false);
+    // flop = les moins vendus parmi ceux vendus, ordre croissant
+    var flop=topN.slice().reverse().slice(0,8);
+    (function(){var max=pq[topN[0]]||1;var h='';flop.forEach(function(nm){
+      var w=Math.max(4,Math.round(pq[nm]/max*100));
+      h+='<div class="bar-row"><span class="bar-name">'+escapeHtml(nm)+'</span><span class="bar-track"><span class="bar-fill lo" style="width:'+w+'%"></span></span><span class="bar-val">'+pq[nm]+'× · '+eur(pc[nm])+'</span></div>';
+    });$('#anaFlop').innerHTML=h;})();
+
+    // ---- RAYONS ----
+    var catNames=Object.keys(catC).sort(function(a,b){return catC[b]-catC[a];});
+    var cmax=catNames.length?catC[catNames[0]]:1;var ch='';
+    catNames.forEach(function(c){
+      var w=Math.max(4,Math.round(catC[c]/cmax*100));
+      ch+='<div class="bar-row"><span class="bar-name">'+escapeHtml(c)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+w+'%"></span></span><span class="bar-val">'+eur(catC[c])+' · '+Math.round(catC[c]/tot*100)+'%</span></div>';
+    });
+    $('#anaCats').innerHTML=ch;
+
+    // ---- RENTABILITÉ (bénéfice exact) ----
+    var costByName={};products.forEach(function(p){if(p.cost!=null)costByName[p.name]=p.cost;});
+    var benefRows=[], totBenef=0, caCosted=0, missing=0, soldNames=Object.keys(pq);
+    soldNames.forEach(function(nm){
+      if(costByName[nm]==null){missing++;return;}
+      var revenue=pc[nm], cost=costByName[nm]*pq[nm], benef=revenue-cost;
+      totBenef+=benef;caCosted+=revenue;
+      benefRows.push({nm:nm,benef:benef,qty:pq[nm],marge:revenue>0?benef/revenue*100:0});
+    });
+    var pf=$('#anaProfit');
+    if(!soldNames.length){pf.innerHTML='<div style="color:var(--muted);font-size:13px">Aucune vente.</div>';}
+    else if(!benefRows.length){pf.innerHTML='<div class="insight warn">Aucun prix d\'achat saisi. Clique sur « Saisir les prix d\'achat » pour calculer le bénéfice.</div>';}
+    else{
+      benefRows.sort(function(a,b){return b.benef-a.benef;});
+      var h='<div class="mini-stat">'
+        +'<div class="ms"><div class="msv">'+eur(totBenef)+'</div><div class="msl">Bénéfice exact</div></div>'
+        +'<div class="ms"><div class="msv">'+Math.round(caCosted?totBenef/caCosted*100:0)+'%</div><div class="msl">Marge moyenne</div></div>'
+        +'<div class="ms"><div class="msv">'+missing+'</div><div class="msl">Sans prix d\'achat</div></div>'
+        +'</div>';
+      h+='<div style="font-weight:700;font-size:13px;margin:6px 0 4px">Produits les plus rentables</div>';
+      var bmax=Math.abs(benefRows[0].benef)||1;
+      benefRows.slice(0,8).forEach(function(r){
+        var w=Math.max(4,Math.round(Math.abs(r.benef)/bmax*100));
+        h+='<div class="bar-row"><span class="bar-name">'+escapeHtml(r.nm)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+w+'%"></span></span><span class="bar-val">'+eur(r.benef)+' · '+Math.round(r.marge)+'%</span></div>';
+      });
+      if(missing>0)h+='<div class="insight warn" style="margin-top:10px">📌 <b>'+missing+'</b> produit(s) vendus sans prix d\'achat ne sont pas comptés dans le bénéfice. Saisis-les pour un calcul complet.</div>';
+      pf.innerHTML=h;
+    }
+
+    // ---- SUIVI DES REMISES EMPLOYÉ ----
+    var staffSales=list.filter(function(s){return s.staff&&s.discount>0;});
+    var st=$('#anaStaff');
+    if(!staffSales.length){st.innerHTML='<div style="color:var(--muted);font-size:13px">Aucune remise employé sur cette période.</div>';}
+    else{
+      var byEmp={},totDisc=0;
+      staffSales.forEach(function(s){var e=s.employee||'—';byEmp[e]=byEmp[e]||{n:0,d:0,ca:0};byEmp[e].n++;byEmp[e].d+=s.discount;byEmp[e].ca+=s.total;totDisc+=s.discount;});
+      var h='<div class="mini-stat">'
+        +'<div class="ms"><div class="msv">'+staffSales.length+'</div><div class="msl">Tickets remisés</div></div>'
+        +'<div class="ms"><div class="msv">'+eur(totDisc)+'</div><div class="msl">Total remises accordées</div></div>'
+        +'</div>';
+      h+='<div style="font-weight:700;font-size:13px;margin:4px 0">Par employé</div>';
+      Object.keys(byEmp).sort(function(a,b){return byEmp[b].d-byEmp[a].d;}).forEach(function(nm){
+        h+='<div class="db-row"><span class="dbn">'+escapeHtml(nm)+'<span class="dbs"> · '+byEmp[nm].n+' ticket(s) · '+eur(byEmp[nm].ca)+' payés</span></span><b>−'+eur(byEmp[nm].d)+'</b></div>';
+      });
+      st.innerHTML=h;
+    }
+
+    renderProdStudy();
+  }
+  // Éditeur des prix d'achat (gérant)
+  $('#editCostsBtn').addEventListener('click',function(){
+    var box=$('#costEditor');
+    if(box.style.display==='none'){box.style.display='block';renderCostEditor();this.textContent='Masquer les prix d\'achat';}
+    else{box.style.display='none';this.textContent='🔒 Saisir / modifier les prix d\'achat';}
+  });
+  function renderCostEditor(){
+    var box=$('#costEditor');
+    var h='<div style="color:var(--muted);font-size:12px;margin-bottom:8px">Prix d\'achat (ce que te coûte le produit). Confidentiel — visible du gérant uniquement.</div>';
+    h+='<div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px">';
+    products.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
+      h+='<div class="ce-row"><span class="cen">'+escapeHtml(p.name)+'</span><span class="cepx">vente '+eur(p.price)+'</span><input type="text" inputmode="decimal" class="ce-in" data-id="'+escapeHtml(p.id)+'" value="'+escapeHtml(p.cost!=null?p.cost:'')+'" placeholder="achat €"></div>';
+    });
+    h+='</div><button class="rg-btn" id="saveCosts" style="margin-top:10px;width:100%">Enregistrer les prix d\'achat</button>';
+    box.innerHTML=h;
+    $('#saveCosts').addEventListener('click',function(){
+    if(!requireGerant())return;
+      box.querySelectorAll('.ce-in').forEach(function(inp){
+        var id=inp.dataset.id, v=inp.value.trim();
+        products.forEach(function(p){if(p.id===id){
+          if(v===''){delete p.cost;}
+          else{var c=parseFloat(v.replace(',','.'));if(!isNaN(c)&&c>=0)p.cost=Math.round(c*100)/100;}
+        }});
+      });
+      save(LS_PROD,products);renderAnalyse();flashScan('✓ Prix d\'achat enregistrés');
+    });
+  }
+  // Étude d'un produit : meilleur jour de la semaine + évolution (tout l'historique)
+  function renderProdStudy(){
+    var sel=$('#anaProdSel');var pid=sel.value;var box=$('#anaProd');
+    if(!pid){box.innerHTML='<div style="color:var(--muted);font-size:13px;padding:6px 0">Choisis un produit pour voir quel jour il part le plus et son évolution.</div>';return;}
+    var prod=products.filter(function(p){return p.id===pid;})[0];if(!prod){box.innerHTML='';return;}
+    var pname=prod.name;
+    var dow=[0,0,0,0,0,0,0];      // qty par jour de semaine (0=dim)
+    var dowC=[0,0,0,0,0,0,0];
+    var byDate={};var totQ=0,totC=0;
+    sales.forEach(function(s){
+      s.items.forEach(function(i){
+        if(i.name!==pname)return;
+        var d=new Date(s.ts);var wd=d.getDay();
+        dow[wd]+=i.qty;dowC[wd]+=i.price*i.qty;totQ+=i.qty;totC+=i.price*i.qty;
+        var dk=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+        byDate[dk]=(byDate[dk]||0)+i.qty;
+      });
+    });
+    if(!totQ){box.innerHTML='<div class="insight warn"><b>'+escapeHtml(pname)+'</b> n\'a jamais été vendu dans l\'historique.</div>';return;}
+    var FR=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    var FRS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    // réordonner lundi->dimanche
+    var order=[1,2,3,4,5,6,0];
+    var bestWd=order[0];order.forEach(function(w){if(dow[w]>dow[bestWd])bestWd=w;});
+    var maxDow=Math.max.apply(null,dow)||1;
+    var h='<div class="mini-stat">'
+      +'<div class="ms"><div class="msv">'+totQ+'</div><div class="msl">Vendus (total)</div></div>'
+      +'<div class="ms"><div class="msv">'+eur(totC)+'</div><div class="msl">CA généré</div></div>'
+      +'<div class="ms"><div class="msv">'+FR[bestWd]+'</div><div class="msl">Meilleur jour</div></div>'
+      +'</div>';
+    h+='<div class="insight">📅 <b>'+escapeHtml(pname)+'</b> part surtout le <b>'+FR[bestWd].toLowerCase()+'</b> ('+dow[bestWd]+' unités cumulées).</div>';
+    h+='<div style="font-weight:700;font-size:13px;margin:10px 0 4px">Par jour de la semaine</div>';
+    order.forEach(function(w){
+      var pct=Math.round(dow[w]/maxDow*100);
+      h+='<div class="dow-row"><span class="down">'+FRS[w]+'</span><span class="dow-track"><span class="dow-fill" style="width:'+Math.max(2,pct)+'%"></span></span><span class="dowv">'+dow[w]+'</span></div>';
+    });
+    // 10 derniers jours vendeurs
+    var dates=Object.keys(byDate).sort().slice(-10);
+    h+='<div style="font-weight:700;font-size:13px;margin:12px 0 4px">Historique récent</div>';
+    var dmax=1;dates.forEach(function(d){if(byDate[d]>dmax)dmax=byDate[d];});
+    dates.forEach(function(d){
+      var pct=Math.round(byDate[d]/dmax*100);
+      h+='<div class="dow-row"><span class="down" style="flex:0 0 78px;font-size:11px">'+d.slice(5)+'</span><span class="dow-track"><span class="dow-fill" style="width:'+Math.max(2,pct)+'%"></span></span><span class="dowv">'+byDate[d]+'</span></div>';
+    });
+    box.innerHTML=h;
+  }
+  document.querySelectorAll('#anaPeriod .per-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('#anaPeriod .per-btn').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');anaPeriod=b.dataset.ana;renderAnalyse();
+    });
+  });
+  $('#anaProdSel').addEventListener('change',renderProdStudy);
+  $('#exportBtn').addEventListener('click',function(){
+    var list=sales.filter(function(s){return inPeriod(s.ts);});
+    if(!list.length){uiAlert('Aucune vente à exporter sur cette période.');return;}
+    var PM={espece:'Espèces €',cb:'Carte',chf:'Espèces CHF'};
+    var rows=[['Date','Heure','N° ticket','Type','Employé','Paiement','Total TTC','TVA','Reçu','Rendu','Remise employé','Articles']];
+    list.forEach(function(s){var d=new Date(s.ts);rows.push([d.toLocaleDateString('fr-FR'),d.toLocaleTimeString('fr-FR'),(s.seq?seqLabel(s.seq):''),s.type==='annulation'?'Annulation de '+seqLabel(s.ref):'Vente',s.employee||'',PM[s.payment]||PM.espece,eur(s.total),eur((s.tvaDetail||[]).reduce(function(a,t){return a+t.tva;},0)),eur(s.received||s.total),eur((s.received||s.total)-s.total),(s.staff&&s.discount>0)?eur(s.discount):'',s.items.map(function(i){return i.qty+'x '+i.name;}).join(' | ')]);});
+    var csv=rows.map(function(r){return r.map(function(c){c=String(c);if(/^[=+\-@\t\r]/.test(c)&&!/^-?\d/.test(c))c="'"+c;return '"'+c.replace(/"/g,'""')+'"';}).join(';');}).join('\n');
+    var blob=new Blob(["﻿"+csv],{type:'text/csv;charset=utf-8;'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bilan_'+currentPeriod+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  });
+
+  // ---- ASSISTANT ----
+  var lessons=[
+    {t:"Encaisser une vente",d:"Les 4 étapes de base",steps:[
+      "Onglet « Caisse » : touchez chaque produit acheté. Il s'ajoute au ticket à droite.",
+      "Pour plusieurs fois le même article, touchez-le plusieurs fois, ou utilisez les boutons + et −.",
+      "Vérifiez le total en bas à droite, puis touchez « Encaisser ».",
+      "Saisissez le montant donné par le client : la caisse calcule la monnaie à rendre. Touchez « Valider »."
+    ]},
+    {t:"Rendre la monnaie",d:"Sans se tromper",steps:[
+      "Après « Encaisser », tapez le montant que le client vous donne (ex : il donne 20 € pour 13,40 €).",
+      "La caisse affiche « À rendre : 6,60 € ». Rendez exactement cette somme.",
+      "Astuce : utilisez les boutons rapides (5 €, 10 €, 20 €…) ou « Appoint » si le client paie pile.",
+      "Si le montant est insuffisant, la caisse affiche ce qu'il manque en rouge."
+    ]},
+    {t:"Ajouter un produit",d:"Nouveau prix, nouvel article",steps:[
+      "Onglet « Produits ».",
+      "Remplissez le nom, le prix et la catégorie.",
+      "Touchez « Ajouter ». Le produit apparaît aussitôt dans la caisse.",
+      "Pour corriger un prix : touchez le crayon ✎ à côté du produit."
+    ]},
+    {t:"Annuler / corriger",d:"En cas d'erreur",steps:[
+      "Pour retirer un article : baissez sa quantité à 0 avec le bouton −.",
+      "Pour tout annuler : touchez « Annuler » en bas du ticket.",
+      "Une erreur de prix : onglet « Produits », crayon ✎, corrigez, enregistrez.",
+      "Une vente déjà validée par erreur : prévenez le gérant. Il l'annule dans « Bilan » avec le bouton ↩ (un ticket d'annulation est imprimé, rien n'est effacé)."
+    ]},
+    {t:"Fin de journée",d:"Le soir, en fermant",steps:[
+      "Le gérant ouvre l'onglet « Bilan » (vue « Jour ») : chiffre du jour, nombre de tickets et répartition Espèces € / Carte / CHF.",
+      "Comptez le tiroir des euros et celui des CHF séparément, puis comparez avec les montants affichés.",
+      "Le gérant peut exporter le bilan (CSV) ou l'envoyer par email (Réglages).",
+      "Les ventes restent enregistrées : rien n'est effacé, les bilans semaine et mois en ont besoin."
+    ]},
+    {t:"Règles d'or",d:"Le bon réflexe",steps:[
+      "Toujours vérifier le total AVANT d'annoncer le prix au client.",
+      "Toujours recompter la monnaie rendue à voix haute.",
+      "En cas de doute sur un prix, vérifier dans l'onglet « Produits ».",
+      "Rester poli et souriant, même en cas d'affluence."
+    ]}
+  ];
+
+  var faq=[
+    {k:["monnaie","rendre","rendu","change"],a:"Pour rendre la monnaie : après « Encaisser », tapez le montant donné par le client. La caisse affiche automatiquement la somme à rendre. Utilisez les boutons rapides (5, 10, 20 €) pour aller plus vite."},
+    {k:["encaisser","payer","paiement","vente","vendre"],a:"Pour encaisser : touchez les produits dans l'onglet Caisse, vérifiez le total, touchez « Encaisser », saisissez le montant reçu, puis « Valider »."},
+    {k:["ajouter produit","nouveau produit","créer produit","ajouter article"],a:"Onglet « Produits » : remplissez le nom, le prix et la catégorie, puis « Ajouter ». Le produit apparaît tout de suite dans la caisse."},
+    {k:["prix","changer prix","modifier prix","corriger prix","erreur prix"],a:"Pour changer un prix : onglet « Produits », touchez le crayon ✎ à côté du produit, modifiez le prix, puis « Enregistrer »."},
+    {k:["annuler","supprimer article","enlever","retirer","erreur"],a:"Avant l'encaissement : baissez la quantité à 0 avec le bouton −, ou touchez « Annuler » en bas du ticket. Après l'encaissement, seul le gérant peut annuler la vente (onglet « Bilan », bouton ↩) : la loi interdit d'effacer une vente, on enregistre un ticket d'annulation."},
+    {k:["clôturer","cloturer","fermer","fin de journée","soir","caisse du jour"],a:"En fin de journée, le gérant ouvre l'onglet « Bilan » (vue Jour) : chiffre, tickets et répartition Espèces € / Carte / CHF. Comptez les tiroirs € et CHF séparément et comparez. Les ventes ne sont jamais effacées."},
+    {k:["chiffre","total du jour","recette","combien gagné","ventes du jour"],a:"Le chiffre du jour s'affiche dans l'onglet « Bilan » (réservé au gérant), en vue Jour, Semaine ou Mois."},
+    {k:["remise","employé","-40","40%","réduction"],a:"Remise employé −40 % : touchez le bouton « Remise employé » avant d'encaisser vos propres achats. Limite : 1 ticket par jour, 2 boissons sans alcool + 2 articles alimentaires. Interdit pour un client."},
+    {k:["chf","en chf","payer en chf","franc","francs suisses","suisse"],a:"Paiement en CHF : à l'encaissement, choisissez « CHF », tapez le montant reçu en francs (1 CHF = 1 €). La monnaie est rendue en euros. Rangez les CHF dans leur tiroir séparé."},
+    {k:["scanner","scannette","code-barres","code barre"],a:"Scannez simplement l'article avec la scannette : il s'ajoute au ticket. Si « Code inconnu » s'affiche, le produit n'a pas encore son code-barres : ajoutez-le dans l'onglet « Produits ». Le bouton 📷 utilise la caméra (pas sur iPhone/iPad)."},
+    {k:["sac","sachet"],a:"Si vous vendez des sacs, ajoutez-les comme un produit (ex : « Sac plastique » à 0,10 €) et touchez-le au moment de l'encaissement."},
+    {k:["quantité","plusieurs","beaucoup"],a:"Pour plusieurs fois le même article : touchez-le plusieurs fois, ou utilisez les boutons + et − sur la ligne du ticket."},
+    {k:["bonjour","salut","bonsoir","coucou"],a:"Bonjour ! Posez-moi une question sur la caisse, ou touchez une leçon de formation au-dessus."},
+    {k:["merci"],a:"Avec plaisir ! N'hésitez pas si vous avez d'autres questions."},
+    {k:["carte","cb","bancaire","terminal"],a:"Paiement par carte : faites payer le client sur le terminal bancaire, puis dans la caisse choisissez « Carte » et touchez « Valider ». La vente est comptée dans les encaissements CB."},
+    {k:["ticket client","imprimer","reçu"],a:"Le ticket s'imprime à la demande : après l'encaissement, touchez « 🧾 Imprimer le ticket du dernier achat ». Le gérant peut réimprimer n'importe quel ticket depuis l'onglet « Bilan »."}
+  ];
+
+  function botSay(html){
+    var log=$('#chatLog');var b=el('div','bubble bot');b.innerHTML=html;log.appendChild(b);log.scrollTop=log.scrollHeight;
+  }
+  function meSay(txt){
+    var log=$('#chatLog');var b=el('div','bubble me');b.textContent=txt;log.appendChild(b);log.scrollTop=log.scrollHeight;
+  }
+  function answer(q){
+    var s=q.toLowerCase();
+    var best=null,bestScore=0;
+    faq.forEach(function(item){
+      var score=0;item.k.forEach(function(kw){if(s.indexOf(kw)>=0)score+=kw.length;});
+      if(score>bestScore){bestScore=score;best=item;}
+    });
+    if(best)return best.a;
+    return "Je ne suis pas sûr de comprendre. Voici ce que je sais expliquer : encaisser, rendre la monnaie, payer en carte ou en CHF, scanner, la remise employé, ajouter ou corriger un produit, annuler, imprimer un ticket et la fin de journée. Touchez aussi une leçon de formation au-dessus.";
+  }
+  function showLesson(l){
+    var html='<b>'+escapeHtml(l.t)+'</b><ul>';
+    l.steps.forEach(function(st){html+='<li>'+escapeHtml(st)+'</li>';});
+    html+='</ul>';
+    botSay(html);
+  }
+  function renderLessons(){
+    var box=$('#lessons');box.innerHTML='';
+    lessons.forEach(function(l){
+      var c=el('button','lesson');
+      c.innerHTML='<b>'+escapeHtml(l.t)+'</b><span>'+escapeHtml(l.d)+'</span>';
+      c.addEventListener('click',function(){
+        document.querySelector('.tab[data-view="assistant"]');
+        showLesson(l);
+        $('#chatLog').scrollTop=$('#chatLog').scrollHeight;
+      });
+      box.appendChild(c);
+    });
+  }
+  function renderChips(){
+    var chips=["Comment rendre la monnaie ?","Comment ajouter un produit ?","Comment annuler une vente ?","Comment payer en CHF ?","Fin de journée ?"];
+    var box=$('#chips');box.innerHTML='';
+    chips.forEach(function(c){
+      var b=el('button','chip');b.textContent=c;
+      b.addEventListener('click',function(){meSay(c);setTimeout(function(){botSay(answer(c));},250);});
+      box.appendChild(b);
+    });
+  }
+  function sendChat(){
+    var inp=$('#chatInput');var q=inp.value.trim();if(!q)return;
+    meSay(q);inp.value='';
+    setTimeout(function(){botSay(answer(q));},250);
+  }
+  $('#chatSend').addEventListener('click',sendChat);
+  $('#chatInput').addEventListener('keydown',function(e){if(e.key==='Enter')sendChat();});
+
+  var asstStarted=false;
+  function initAssistant(){
+    if(asstStarted)return;asstStarted=true;
+    renderLessons();renderChips();
+    botSay("Bonjour 👋 Je suis l'assistant de la caisse. Choisissez une leçon au-dessus, touchez une question rapide, ou écrivez-moi.");
+  }
+  // init assistant when tab opened
+  document.querySelector('.tab[data-view="assistant"]').addEventListener('click',initAssistant);
+
+  // ---- CODES-BARRES : scannette (clavier) + caméra ----
+  function findByBarcode(code){
+    code=String(code).trim();
+    var hits=products.filter(function(p){return p.barcode&&p.barcode===code;});
+    return hits[0]||null;
+  }
+  function processBarcode(code){
+    var p=findByBarcode(code);
+    if(p){
+      // aller sur la caisse si besoin
+      var caisseTab=document.querySelector('.tab[data-view="caisse"]');
+      if(!$('#caisse').classList.contains('active')) caisseTab.click();
+      addToCart(p);
+      flashScan('✓ '+p.name+' ajouté');
+      addScanFeed(true,p.name,p.price);
+    }else{
+      flashScan('Code inconnu : '+code+' — ajoutez ce produit avec son code-barres',true);
+      addScanFeed(false,'Code inconnu : '+code,null);
+    }
+  }
+  // Détail des articles scannés en direct
+  var scanCount=0, scanTotal=0;
+  function updateScanCount(){
+    $('#scanFeedCount').textContent='📡 '+scanCount+' article'+(scanCount>1?'s':'')+' scanné'+(scanCount>1?'s':'')+' · '+eur(scanTotal);
+  }
+  function addScanFeed(ok,name,price){
+    var feed=$('#scanFeed'), listEl=$('#scanFeedList');
+    feed.style.display='block';
+    if(ok){ scanCount++; scanTotal=r2(scanTotal+(price||0)); }
+    updateScanCount();
+    var row=el('div','sf-item '+(ok?'ok':'ko')+' flash');
+    row.innerHTML='<span class="sfi-ic">'+(ok?'✓':'✕')+'</span>'
+      +'<span class="sfi-n">'+escapeHtml(name)+'</span>'
+      +'<span class="sfi-p">'+(price!=null?eur(price):'')+'</span>';
+    listEl.insertBefore(row,listEl.firstChild);
+    while(listEl.children.length>15) listEl.removeChild(listEl.lastChild);
+  }
+  $('#scanFeedClear').addEventListener('click',function(){
+    $('#scanFeedList').innerHTML='';$('#scanFeed').style.display='none';
+    scanCount=0;scanTotal=0;updateScanCount();
+  });
+  var flashEl=null;
+  function flashScan(msg,warn){
+    if(!flashEl){flashEl=el('div');flashEl.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:'+(warn?'#b45309':'#155c39')+';color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;font-size:14px;z-index:80;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90%;text-align:center';document.body.appendChild(flashEl);}
+    flashEl.style.background=warn?'#b45309':'#155c39';
+    flashEl.textContent=msg;flashEl.style.display='block';
+    clearTimeout(flashEl._t);flashEl._t=setTimeout(function(){flashEl.style.display='none';},1800);
+  }
+  // Scannette = clavier rapide terminé par Entrée
+  var scanBuf="", scanLast=0;
+  document.addEventListener('keydown',function(e){
+    if($('#login').classList.contains('show'))return; // pas pendant la connexion
+    var now=Date.now();
+    if(now-scanLast>80) scanBuf="";
+    scanLast=now;
+    if(e.key==='Enter'){
+      var tg=e.target, tid=tg&&tg.id;
+      var inField=tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.tagName==='SELECT');
+      if(scanBuf.length>=3){
+        e.preventDefault();
+        if(tid==='fBarcode'){ /* scan dans la fiche produit : le code reste dans le champ */ }
+        else if(inField&&tid!=='search'){ /* autre champ (nom, code PIN, chat…) : on n'encaisse pas */ }
+        else if($('#overlay').classList.contains('show')||$('#receiptOverlay').classList.contains('show')||document.querySelector('.ui-ov')){
+          flashScan('Terminez d\'abord l\'encaissement en cours avant de scanner',true);
+        }else{
+          if(tid==='search'){ tg.value=''; search=''; renderProducts(); }
+          processBarcode(scanBuf);
+        }
+      }
+      scanBuf="";
+      return;
+    }
+    if(e.key.length===1&&/[0-9A-Za-z]/.test(e.key)){ scanBuf+=e.key; }
+  });
+  // Scan caméra
+  var scanStream=null, scanRun=false;
+  $('#scanBtn').addEventListener('click',startCamScan);
+  $('#scanClose').addEventListener('click',stopCamScan);
+  function startCamScan(){
+    if(!('BarcodeDetector'in window)){
+      uiAlert("Le scan par caméra n'est pas disponible sur ce navigateur.\n\nUtilisez une scannette branchée (elle fonctionne directement), ou tapez le code dans la barre de recherche.");
+      return;
+    }
+    var det=new window.BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a','upc_e','code_39']});
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(stream){
+      scanStream=stream;scanRun=true;
+      var v=$('#scanVideo');v.srcObject=stream;v.play();
+      $('#scanOverlay').classList.add('show');
+      (function loop(){
+        if(!scanRun)return;
+        det.detect(v).then(function(codes){
+          if(codes&&codes.length){
+            var code=codes[0].rawValue;
+            stopCamScan();processBarcode(code);
+          }else{requestAnimationFrame(loop);}
+        }).catch(function(){requestAnimationFrame(loop);});
+      })();
+    }).catch(function(){uiAlert("Impossible d'accéder à la caméra. Autorisez la caméra, ou utilisez une scannette.");});
+  }
+  function stopCamScan(){
+    scanRun=false;$('#scanOverlay').classList.remove('show');
+    if(scanStream){scanStream.getTracks().forEach(function(t){t.stop();});scanStream=null;}
+  }
+
+  // ---- EMPLOYÉS ----
+  function renderEmpList(){
+    var box=$('#empList');box.innerHTML='';
+    if(!employees.length){box.innerHTML='<div class="empty" style="padding:16px">Aucun employé. Ajoutez le premier (gérant).</div>';return;}
+    employees.forEach(function(emp){
+      var row=el('div','emp-row');
+      var info=el('div','ei');
+      info.innerHTML='<b>'+escapeHtml(emp.name)+'</b><span>Code : ••••</span>';
+      var badge=el('span','role-badge '+(emp.role==='gerant'?'role-g':'role-e'));
+      badge.textContent=emp.role==='gerant'?'Gérant':'Employé';
+      var edit=el('button','icon-btn');edit.textContent='✎';
+      edit.addEventListener('click',function(){
+        $('#empId').value=emp.id;$('#empName').value=emp.name;$('#empCode').value='';$('#empCode').placeholder='Laisser vide pour garder le code';$('#empRole').value=emp.role;
+        $('#saveEmp').textContent='Enregistrer';window.scrollTo(0,0);
+      });
+      var del=el('button','icon-btn del');del.textContent='🗑';
+      del.addEventListener('click',function(){
+        var gerants=employees.filter(function(x){return x.role==='gerant';});
+        if(emp.role==='gerant'&&gerants.length<=1){uiAlert('Impossible de supprimer le dernier gérant.');return;}
+        if(currentUser&&emp.id===currentUser.id){uiAlert('Vous ne pouvez pas supprimer le compte avec lequel vous êtes connecté.');return;}
+        if(!requireGerant())return;
+        uiConfirm('Supprimer '+emp.name+' ?',function(){logEvent('EMPLOYE_SUPPRIME',emp.name);employees=employees.filter(function(x){return x.id!==emp.id;});save(LS_EMP,employees);renderEmpList();});
+      });
+      row.appendChild(info);row.appendChild(badge);row.appendChild(edit);row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+  $('#saveEmp').addEventListener('click',function(){
+    if(!requireGerant())return;
+    var name=$('#empName').value.trim();
+    var code=$('#empCode').value.trim();
+    var role=$('#empRole').value==='gerant'?'gerant':'employe';
+    var id=$('#empId').value;
+    if(!name){uiAlert('Indiquez un nom.');return;}
+    if(!safeName(name)){uiAlert('Ce nom n\'est pas autorisé.');return;}
+    if(!(id&&code==='')&&!/^[0-9]{4}$/.test(code)){uiAlert('Le code doit faire exactement 4 chiffres.');return;}
+    var clash=code?employees.filter(function(e){return e.id!==id&&pinMatches(e,code);}):[];
+    if(clash.length){uiAlert('Ce code est déjà utilisé par '+clash[0].name+'. Choisissez-en un autre.');return;}
+    if(id&&role!=='gerant'){
+      var target=employees.filter(function(e){return e.id===id;})[0];
+      var nG=employees.filter(function(e){return e.role==='gerant';}).length;
+      if(target&&target.role==='gerant'&&nG<=1){uiAlert('Impossible : c\'est le dernier gérant.\nNommez d\'abord un autre gérant.');return;}
+      if(currentUser&&id===currentUser.id){uiAlert('Vous ne pouvez pas retirer vos propres droits de gérant.\nConnectez-vous avec un autre gérant pour le faire.');return;}
+    }
+    logEvent(id?'EMPLOYE_MODIFIE':'EMPLOYE_AJOUTE',name+' ('+role+')');
+    if(id){employees.forEach(function(e){if(e.id===id){e.name=name;if(code)setPin(e,code);e.role=role;}});
+      if(currentUser&&currentUser.id===id){currentUser.name=name;$('#userName').textContent=name;$('#userAv').textContent=name.charAt(0).toUpperCase();}}
+    else{var ne={id:uid(),name:name,role:role};setPin(ne,code);employees.push(ne);}
+    save(LS_EMP,employees);
+    $('#empId').value='';$('#empName').value='';$('#empCode').value='';$('#empRole').value='employe';$('#empCode').placeholder='Ex : 4 chiffres';$('#saveEmp').textContent="Ajouter l'employé";
+    renderEmpList();
+  });
+
+  // ---- CONNEXION / VERROUILLAGE ----
+  var pinBuf="";
+  function buildPinKeys(){
+    var k=$('#pinKeys');k.innerHTML='';
+    ['1','2','3','4','5','6','7','8','9','',' 0',' ←'].forEach(function(key){
+      if(key===''){var e=el('button','pin-key empty');e.disabled=true;k.appendChild(e);return;}
+      var label=key.trim();
+      var b=el('button','pin-key');b.textContent=label==='←'?'←':label;
+      b.addEventListener('click',function(){pinPress(label);});
+      k.appendChild(b);
+    });
+  }
+  function renderPinDots(){
+    var d=$('#pinDots');d.innerHTML='';
+    for(var i=0;i<4;i++){var dot=el('span','pin-dot'+(i<pinBuf.length?' on':''));d.appendChild(dot);}
+  }
+  var loginMode='login', setupTemp='';
+  function pinPress(key){
+    $('#loginErr').textContent='';
+    if(key==='←'){pinBuf=pinBuf.slice(0,-1);renderPinDots();return;}
+    if(pinBuf.length>=4)return;
+    pinBuf+=key;renderPinDots();
+    if(pinBuf.length===4){setTimeout(handlePin,150);}
+  }
+  function handlePin(){
+    if(loginMode==='login'){tryLogin();return;}
+    if(loginMode==='setup1'){
+      setupTemp=pinBuf;pinBuf="";renderPinDots();loginMode='setup2';
+      $('#loginSub').textContent='Confirmez votre code';return;
+    }
+    if(loginMode==='setup2'){
+      if(pinBuf===setupTemp){
+        var g={id:uid(),name:'Gérant',role:'gerant'};setPin(g,setupTemp);
+        employees.push(g);save(LS_EMP,employees);
+        currentUser=g;pinBuf="";logEvent('CREATION_GERANT','Première configuration');
+        $('#login').classList.remove('show');applyUser();
+      }else{
+        $('#loginErr').textContent='Les codes ne correspondent pas';
+        pinBuf="";setupTemp="";renderPinDots();loginMode='setup1';
+        $('#loginSub').textContent='Créez votre code gérant (4 chiffres)';
+      }
+    }
+  }
+  // Compteur d'erreurs conservé (un rechargement ne le remet pas à zéro) ; blocage de plus en plus long
+  var LS_LOCK='epicerie_pinlock_v1';
+  var lk=load(LS_LOCK,{fail:0,until:0,level:0})||{fail:0,until:0,level:0};
+  var failCount=lk.fail||0, lockUntil=lk.until||0;
+  function saveLock(){lk.fail=failCount;lk.until=lockUntil;save(LS_LOCK,lk);}
+  function tryLogin(){
+    if(Date.now()<lockUntil){
+      var s=Math.ceil((lockUntil-Date.now())/1000);
+      $('#loginErr').textContent='Trop d\'essais. Patientez '+s+' s.';
+      pinBuf="";renderPinDots();return;
+    }
+    var match=employees.filter(function(e){return pinMatches(e,pinBuf);})[0];
+    if(match){
+      var hadBlock=lk.level>0;
+      failCount=0;lk.level=0;saveLock();currentUser=match;pinBuf="";logEvent('CONNEXION',match.role);
+      $('#login').classList.remove('show');
+      applyUser();
+    }else{
+      failCount++;
+      if(failCount>=5){
+        var secs=[30,120,600,1800][Math.min(lk.level,3)];lk.level=(lk.level||0)+1;
+        lockUntil=Date.now()+secs*1000;failCount=0;
+        logEvent('BLOCAGE_CODES','5 codes faux — blocage '+secs+' s (série '+lk.level+')');
+        $('#loginErr').textContent='5 codes faux. Caisse bloquée '+(secs<120?secs+' secondes':Math.round(secs/60)+' minutes')+'.';
+      }
+      else{$('#loginErr').textContent='Code incorrect ('+failCount+'/5)';}
+      saveLock();
+      pinBuf="";renderPinDots();
+    }
+  }
+  function showLogin(){
+    pinBuf="";setupTemp="";buildPinKeys();$('#loginErr').textContent='';
+    if(employees.length===0){
+      loginMode='setup1';
+      $('#loginTitle').textContent='Première configuration';
+      $('#loginSub').textContent='Créez votre code gérant (4 chiffres)';
+    }else{
+      loginMode='login';
+      $('#loginTitle').textContent='Market Place Épicerie';
+      $('#loginSub').textContent='Entrez votre code';
+    }
+    renderPinDots();
+    $('#login').classList.add('show');
+  }
+  function applyUser(){
+    // chip
+    setInert(false);
+    $('#userChip').style.display='flex';$('#lockBtn').style.display='block';
+    $('#userName').textContent=currentUser.name;
+    $('#userAv').textContent=currentUser.name.charAt(0).toUpperCase();
+    // droits : employé = pas d'onglets Produits / Réglages
+    var isG=currentUser.role==='gerant';
+    document.querySelector('.tab[data-view="produits"]').style.display=''; // tous : ajout autorisé
+    $('#fGerantZone').style.display=isG?'':'none'; // prix d'achat & éligibilité : gérant seul
+    document.querySelector('.tab[data-view="journee"]').style.display=isG?'':'none'; // chiffre : gérant seul
+    document.querySelector('.tab[data-view="analyse"]').style.display=isG?'':'none'; // analyse : gérant seul
+    document.querySelector('.tab[data-view="reglages"]').style.display=isG?'':'none';
+    // remise employé : état remis à zéro et mis à jour pour le compte connecté
+    staffDiscount=false; renderCart(); updateStaffUI();
+    dailyReminder();
+    // revenir sur la caisse
+    document.querySelector('.tab[data-view="caisse"]').click();
+    resetIdle();
+    // Sauvegarde automatique quotidienne (gérant), sinon rappel hebdomadaire
+    if(isG&&sales.length>0){
+      var last=0;try{last=parseInt(localStorage.getItem('epicerie_backup_v1'))||0;}catch(e){}
+      if(load(LS_AUTOBK,true)){
+        if(!last||dKey(last)!==dKey(Date.now())){
+          setTimeout(function(){fullBackup(true);flashScan('💾 Sauvegarde du jour téléchargée');},1500);
+        }
+      }else if(!last||(Date.now()-last)>7*864e5){
+        setTimeout(function(){flashScan('💾 Pensez à exporter une sauvegarde (Réglages)',true);},900);
+      }
+    }
+    requestPersistentStorage();
+    if(isG){
+      var pend=products.filter(function(p){return p.pending;}).length;
+      if(pend)setTimeout(function(){flashScan('📝 '+pend+' article(s) créé(s) par des employés à valider (onglet Produits)',true);},2600);
+      var blocks=jet.filter(function(e){return e.type==='BLOCAGE_CODES'&&e.ts>Date.now()-7*864e5;}).length;
+      if(blocks)setTimeout(function(){flashScan('⚠️ '+blocks+' blocage(s) pour codes faux ces 7 derniers jours (journal des événements)',true);},4400);
+    }
+  }
+  // Pendant le verrouillage, rien n'est utilisable derrière l'écran de code (même au clavier)
+  function setInert(on){
+    ['header','main'].forEach(function(s){var n=document.querySelector(s);if(!n)return;if(on)n.setAttribute('inert','');else n.removeAttribute('inert');});
+    if(on){['journee','analyse','reglages'].forEach(function(v){document.querySelector('.tab[data-view="'+v+'"]').style.display='none';});}
+  }
+  function requireGerant(){
+    if(currentUser&&currentUser.role==='gerant')return true;
+    uiAlert('Action réservée au gérant.');return false;
+  }
+  // Verrouillage : on ferme tout ce qui est ouvert (encaissement, ticket, dialogues, caméra)
+  function lockNow(){
+    logEvent('VERROUILLAGE','');
+    currentUser=null;cart=[];staffDiscount=false;renderCart();
+    closePay();$('#receiptOverlay').classList.remove('show');stopCamScan();
+    document.querySelectorAll('.ui-ov').forEach(function(o){o.remove();});
+    setInert(true);
+    showLogin();
+  }
+  $('#lockBtn').addEventListener('click',lockNow);
+
+  // Verrouillage automatique après 3 min d'inactivité
+  var idleTimer=null, IDLE_MS=180000;
+  function resetIdle(){
+    clearTimeout(idleTimer);
+    if(currentUser){
+      idleTimer=setTimeout(function(){
+        if(currentUser){lockNow();}
+      },IDLE_MS);
+    }
+  }
+  ['pointerdown','keydown','touchstart'].forEach(function(ev){document.addEventListener(ev,resetIdle,true);});
+
+  // ---- SAUVEGARDE / EFFACEMENT ----
+  function download(name,obj){
+    var blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  }
+  var LS_AUTOBK='epicerie_autobackup_v1';
+  function fullBackup(auto){
+    download('marketplace_sauvegarde_'+(auto?'auto_':'')+dKey(Date.now())+'.json',
+      {version:2,date:new Date().toISOString(),shop:shop,products:products,employees:employees,sales:sales,clotures:clotures,jet:jet,prints:printsMap()});
+    try{localStorage.setItem('epicerie_backup_v1',String(Date.now()));}catch(e){}
+    logEvent(auto?'SAUVEGARDE_AUTO':'SAUVEGARDE_EXPORTEE',sales.length+' ventes');
+  }
+  $('#exportAll').addEventListener('click',function(){if(requireGerant())fullBackup(false);});
+  $('#autoBackup').checked=!!load(LS_AUTOBK,true);
+  $('#autoBackup').addEventListener('change',function(){save(LS_AUTOBK,this.checked);logEvent('SAUVEGARDE_AUTO_'+(this.checked?'ACTIVEE':'DESACTIVEE'),'');});
+
+  // ---- APPLICATION INSTALLÉE + STOCKAGE PROTÉGÉ ----
+  var installPrompt=null,persisted=null;
+  function isInstalled(){return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;}
+  function requestPersistentStorage(){
+    if(!(navigator.storage&&navigator.storage.persist))return;
+    navigator.storage.persisted().then(function(p){
+      if(p){persisted=true;renderInstallStatus();return;}
+      return navigator.storage.persist().then(function(ok){persisted=ok;renderInstallStatus();});
+    }).catch(function(){});
+  }
+  function renderInstallStatus(){
+    var box=$('#installStatus');if(!box)return;
+    var inst=isInstalled();
+    var lines=[inst?'✅ La caisse est installée sur cet appareil.':'ℹ️ La caisse fonctionne dans le navigateur. Installez-la pour l\'ouvrir comme une application, même sans Internet.',
+      persisted===true?'✅ Stockage protégé : le navigateur ne videra pas les données de lui-même.':persisted===false?'⚠️ Stockage non protégé par le navigateur : gardez la sauvegarde automatique activée.':'',
+      '✅ Copie de secours des données sur l\'appareil (restauration automatique).'];
+    box.className='insight'+((!inst||persisted===false)?' warn':'');
+    box.innerHTML=lines.filter(Boolean).map(escapeHtml).join('<br>');
+    $('#installBtn').style.display=(!inst&&installPrompt)?'':'none';
+  }
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();installPrompt=e;renderInstallStatus();});
+  window.addEventListener('appinstalled',function(){installPrompt=null;logEvent('APPLICATION_INSTALLEE','');renderInstallStatus();});
+  $('#installBtn').addEventListener('click',function(){
+    if(!installPrompt)return;installPrompt.prompt();
+    installPrompt.userChoice.then(function(){installPrompt=null;renderInstallStatus();});
+  });
+  $('#importAll').addEventListener('click',function(){if(requireGerant())$('#importFile').click();});
+  var LS_JET_ORIG='epicerie_jet_origine_v1';
+  $('#importFile').addEventListener('change',function(e){
+    var file=e.target.files[0];e.target.value='';if(!file)return;
+    if(!requireGerant())return;
+    if(file.size>50*1024*1024){uiAlert('Fichier trop volumineux.');return;}
+    var r=new FileReader();
+    r.onload=function(){
+      var data;
+      try{data=JSON.parse(r.result);if(!plain(data)||(!data.products&&!data.employees&&!data.sales))throw new Error('format');}
+      catch(err){uiAlert("Fichier invalide. Choisissez un fichier de sauvegarde Market Place.");return;}
+      // Des ventes existent déjà : elles ne peuvent pas être remplacées (inaltérabilité)
+      if(sales.length){
+        var cat;
+        try{cat=cleanProducts(data.products||[]);}catch(err){uiAlert('Catalogue refusé : '+err.message+' invalide.');return;}
+        if(!cat.length){uiAlert('Cette caisse contient déjà des ventes : elles ne peuvent pas être remplacées.\nLe fichier ne contient pas de catalogue produits à importer.');return;}
+        uiConfirm('Cette caisse contient déjà des ventes : la loi interdit de les remplacer.\n\nImporter uniquement le catalogue produits ('+cat.length+' produits) ?',function(){
+          products=cat;save(LS_PROD,products);logEvent('IMPORT_CATALOGUE',products.length+' produits');
+          renderCats();renderProducts();renderProdList();uiAlert('Catalogue produits importé.');
+        });
+        return;
+      }
+      // Caisse vide (nouvel appareil) : restauration complète, tout est contrôlé
+      var inSales=Array.isArray(data.sales)?data.sales:[], chained=inSales.some(function(s){return plain(s)&&s.hash!=null;});
+      var cProd,cEmp,cClot=[],cJet=[],legacy=false;
+      try{
+        cProd=cleanProducts(data.products||[]);
+        cEmp=cleanEmployees(data.employees||[]);
+        if(chained||(data.version>=2&&inSales.length)){
+          inSales.forEach(function(s){checkSale(s,true);});
+          var v=verifyChain(inSales);
+          if(!v.ok)throw new Error('ventes modifiées ('+v.why+' au N° '+v.at+')');
+        }else if(inSales.length){
+          inSales.forEach(function(s){checkSale(s,false);});legacy=true;
+        }
+        if(Array.isArray(data.clotures)&&data.clotures.length){data.clotures.forEach(checkClot);if(!verifyChain(data.clotures).ok)throw new Error('clôtures modifiées');cClot=data.clotures;}
+        if(Array.isArray(data.jet)&&data.jet.length){data.jet.forEach(checkJet);if(!verifyChain(data.jet).ok)throw new Error('journal modifié');cJet=data.jet;}
+      }catch(err){uiAlert('Sauvegarde refusée : '+err.message+'.');return;}
+      var lastS=inSales[inSales.length-1],gt=0;inSales.forEach(function(s){gt+=s.total;});
+      var msg='Restaurer cette sauvegarde ?\n\n'+cProd.length+' produits · '+cEmp.length+' employés · '+inSales.length+' ventes';
+      if(lastS&&!legacy)msg+='\n\nDernier ticket : N° '+seqLabel(lastS.seq)+'\nGrand total : '+eur(r2(gt))+'\nEmpreinte : '+lastS.hash.slice(0,16)+'\n\nComparez avec votre dernier ticket Z papier avant de valider.';
+      if(legacy)msg+='\n\n⚠️ Ces ventes ne sont pas scellées (ancien format) : elles seront numérotées maintenant et ce sera inscrit au journal.';
+      uiConfirm(msg,function(){
+        products=cProd;employees=cEmp;save(LS_PROD,products);save(LS_EMP,employees);
+        var cs=cleanShop(data.shop);if(cs){shop=cs;save(LS_SHOP,shop);}
+        if(legacy){sales=migrateLegacySales(inSales);logEvent('REPRISE_HISTORIQUE_IMPORT',inSales.length+' ventes non scellées importées et numérotées');}
+        else{sales=inSales;save(LS_SALES,sales);}
+        if(cClot.length){clotures=cClot;save(LS_CLOT,clotures);}
+        if(cJet.length){var orig=load(LS_JET_ORIG,[])||[];orig.push({importe:Date.now(),journal:cJet});save(LS_JET_ORIG,orig);}
+        save(LS_PRINTS,cleanPrints(data.prints));
+        logEvent('RESTAURATION',sales.length+' ventes restaurées'+(lastS&&!legacy?' — dernière empreinte '+lastS.hash.slice(0,16):'')+(cJet.length?' — journal d\'origine conservé ('+cJet.length+' évén.)':''));
+        runClosures();
+        renderCats();renderProducts();renderProdList();renderEmpList();renderReport();loadShopForm();
+        // les comptes ont pu changer : on demande de se reconnecter
+        uiAlert('Sauvegarde restaurée avec succès.\nConnectez-vous avec un code de la sauvegarde.',lockNow);
+      });
+    };
+    r.readAsText(file);
+  });
+  $('#wipeBtn').addEventListener('click',function(){
+    if(!requireGerant())return;
+    if(sales.length){uiAlert('Impossible : '+sales.length+' vente(s) sont enregistrées.\n\nLa loi anti-fraude TVA interdit d\'effacer les ventes. Elles doivent être conservées 6 ans.\nPour arrêter d\'utiliser cette caisse, exportez l\'archive fiscale.');return;}
+    uiConfirm('⚠️ Remettre la caisse à zéro (produits et employés) ?',function(){
+      try{localStorage.removeItem(LS_PROD);localStorage.removeItem(LS_EMP);}catch(e){}MPStore.del(LS_PROD);MPStore.del(LS_EMP);
+      location.reload();
+    });
+  });
+
+  // ---- IDENTITÉ DU COMMERCE ----
+  function loadShopForm(){$('#shName').value=shop.name||'';$('#shAddr').value=shop.address||'';$('#shSiret').value=shop.siret||'';$('#shTva').value=shop.tvaNum||'';}
+  $('#saveShop').addEventListener('click',function(){
+    if(!requireGerant())return;
+    var siret=$('#shSiret').value.replace(/\s/g,'');
+    if(siret&&!/^\d{14}$/.test(siret)){uiAlert('Le SIRET doit comporter 14 chiffres.');return;}
+    shop={name:$('#shName').value.trim()||'Market Place Épicerie',address:$('#shAddr').value.trim(),siret:siret,tvaNum:$('#shTva').value.trim().toUpperCase()};
+    save(LS_SHOP,shop);logEvent('IDENTITE_MODIFIEE',shop.name);flashScan('✓ Identité enregistrée');
+  });
+
+  // ---- CONFORMITÉ : vérification, archive, clôtures, journal ----
+  function integrityReport(){
+    return {ventes:verifyChain(sales),clotures:verifyChain(clotures),journal:verifyChain(jet)};
+  }
+  function showIntegrity(){
+    var r=integrityReport(),ok=r.ventes.ok&&r.clotures.ok&&r.journal.ok;
+    function line(lbl,v){return lbl+' : '+(v.ok?'✅ '+v.n+' intègre(s)':'❌ '+v.why+' (N° '+v.at+')');}
+    var box=$('#integrityStatus');box.className='insight'+(ok?'':' warn');
+    box.innerHTML=(ok?'<b>Intégrité vérifiée</b>':'<b>ANOMALIE DÉTECTÉE</b>')+'<br>'+[line('Ventes',r.ventes),line('Clôtures',r.clotures),line('Journal',r.journal)].map(escapeHtml).join('<br>');
+    return r;
+  }
+  $('#verifyBtn').addEventListener('click',function(){
+    if(!requireGerant())return;var r=showIntegrity();logEvent('VERIFICATION_INTEGRITE',(r.ventes.ok&&r.clotures.ok&&r.journal.ok)?'OK':'ANOMALIE');});
+  $('#archiveBtn').addEventListener('click',function(){
+    if(!requireGerant())return;
+    runClosures();
+    var r=integrityReport();
+    var content={type:'archive-fiscale',version:1,genere:new Date().toISOString(),logiciel:'Market Place Épicerie — caisse',
+      commerce:shop,verification:r,ventes:sales,clotures:clotures,journal:jet,journauxAnterieurs:load(LS_JET_ORIG,[])};
+    var arch={contenu:content,empreinte:sha256(JSON.stringify(content))};
+    download('archive_fiscale_'+new Date().toISOString().slice(0,10)+'.json',arch);
+    logEvent('ARCHIVE_FISCALE',sales.length+' ventes, '+clotures.length+' clôtures — empreinte '+arch.empreinte.slice(0,16));
+  });
+  $('#showClotBtn').addEventListener('click',function(){
+    if(!requireGerant())return;
+    runClosures();
+    var box=$('#conformList');
+    if(!clotures.length){box.innerHTML='<div class="empty" style="padding:12px">Aucune clôture pour l\'instant : elles sont créées automatiquement quand une journée se termine.</div>';return;}
+    var h='<div style="font-weight:700;font-size:13px;margin-bottom:6px">Clôtures (les plus récentes d\'abord)</div>';
+    clotures.slice().reverse().slice(0,90).forEach(function(c){
+      h+='<div class="db-row"><span class="dbn">'+escapeHtml(KIND[c.kind]||'')+' · '+escapeHtml(c.period)+'<span class="dbs"> · '+c.nbVentes+' ventes</span></span><span style="display:flex;gap:8px;align-items:center"><b>'+eur(c.totalTTC)+'</b><button class="icon-btn clot-print" data-seq="'+c.seq+'" title="Afficher le ticket Z">🧾</button></span></div>';
+    });
+    box.innerHTML=h;
+  });
+  $('#conformList').addEventListener('click',function(e){
+    var b=e.target.closest('.clot-print');if(!b)return;
+    var c=clotures.filter(function(x){return String(x.seq)===b.dataset.seq;})[0];
+    if(c){logEvent('EDITION_Z',KIND[c.kind]+' '+c.period);showReceipts(clotHTML(c),'Ticket Z');}
+  });
+  $('#showJetBtn').addEventListener('click',function(){
+    if(!requireGerant())return;
+    var h='<div style="font-weight:700;font-size:13px;margin-bottom:6px">Journal des événements ('+jet.length+') — 100 derniers</div>';
+    jet.slice().reverse().slice(0,100).forEach(function(ev){
+      var d=new Date(ev.ts);
+      h+='<div class="db-row" style="font-size:12px"><span class="dbn">N° '+ev.seq+' · '+escapeHtml(ev.type)+'<span class="dbs"> · '+escapeHtml(ev.user)+(ev.detail?' · '+escapeHtml(ev.detail):'')+'</span></span><span class="dbs">'+d.toLocaleDateString('fr-FR')+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</span></div>';
+    });
+    $('#conformList').innerHTML=h;
+  });
+
+  // ---- BILAN PAR EMAIL ----
+  var LS_REMAIL='epicerie_report_email', LS_RREMIND='epicerie_report_remind', LS_RLAST='epicerie_report_last';
+  (function(){ var e=load(LS_REMAIL,'');if(e)$('#reportEmail').value=e; $('#reportRemind').checked=!!load(LS_RREMIND,false); })();
+  $('#reportEmail').addEventListener('change',function(){save(LS_REMAIL,this.value.trim());});
+  $('#reportRemind').addEventListener('change',function(){save(LS_RREMIND,this.checked);});
+  function reportFilter(k){
+    if(k==='jour')return function(s){return sameDay(s.ts);};
+    if(k==='semaine'){var b=weekBounds();return function(s){return s.ts>=b[0]&&s.ts<b[1];};}
+    var n=new Date();return function(s){var d=new Date(s.ts);return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();};
+  }
+  function reportLabel(k){
+    var n=new Date();
+    if(k==='jour')return FR_DAYS[n.getDay()]+' '+n.getDate()+' '+FR_MONTHS[n.getMonth()]+' '+n.getFullYear();
+    if(k==='semaine'){var b=weekBounds();var s=new Date(b[0]),e=new Date(b[1]-1);return 'semaine du '+s.getDate()+' '+FR_MONTHS[s.getMonth()]+' au '+e.getDate()+' '+FR_MONTHS[e.getMonth()];}
+    return FR_MONTHS[n.getMonth()]+' '+n.getFullYear();
+  }
+  function buildReport(k,filt,labelOverride){
+    var LBL=labelOverride||reportLabel(k);
+    var list=sales.filter(filt||reportFilter(k));
+    var tot=0,items=0,esp=0,cb=0,chf=0,nE=0,nC=0,nH=0,pq={},discTot=0;
+    list.forEach(function(s){
+      tot+=s.total;
+      if(s.payment==='cb'){cb+=s.total;nC++;}else if(s.payment==='chf'){chf+=s.total;nH++;}else{esp+=s.total;nE++;}
+      if(s.staff)discTot+=s.discount||0;
+      s.items.forEach(function(i){items+=i.qty;pq[i.name]=(pq[i.name]||0)+i.qty;});
+    });
+    var top=Object.keys(pq).sort(function(a,b){return pq[b]-pq[a];}).slice(0,5);
+    var L=[];
+    L.push('MARKET PLACE ÉPICERIE');
+    L.push('Bilan — '+LBL);
+    L.push('');
+    L.push('Chiffre d\'affaires : '+eur(tot));
+    L.push('Tickets : '+list.length+'   |   Panier moyen : '+eur(list.length?tot/list.length:0));
+    L.push('Articles vendus : '+items);
+    L.push('');
+    L.push('— Encaissements —');
+    L.push('Especes EUR : '+eur(esp)+'  ('+nE+')');
+    L.push('Carte CB    : '+eur(cb)+'  ('+nC+')');
+    L.push('Especes CHF : '+eur(chf).replace(' €',' CHF')+'  ('+nH+')');
+    L.push('Total encaisse : '+eur(tot));
+    if(discTot>0){L.push('');L.push('Remises employe accordees : -'+eur(discTot));}
+    if(top.length){L.push('');L.push('— Meilleures ventes —');top.forEach(function(nm,i){L.push((i+1)+'. '+nm+'  ('+pq[nm]+'x)');});}
+    L.push('');
+    L.push('Genere par Market Place Epicerie');
+    return {subject:'Bilan '+LBL+' — Market Place Épicerie', body:L.join('\n'), empty:!list.length};
+  }
+  function sendReport(k,filt,labelOverride){
+    var email=(load(LS_REMAIL,'')||'').trim();
+    if(!email){uiAlert('Renseigne d\'abord ton adresse email ci-dessus.');$('#reportEmail').focus();return;}
+    var r=buildReport(k,filt,labelOverride);
+    function go(){var url='mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(r.subject)+'&body='+encodeURIComponent(r.body);window.location.href=url;}
+    if(r.empty){uiConfirm('Aucune vente sur cette période. Envoyer quand même ?',go);return;}
+    go();
+  }
+  $('#mailDay').addEventListener('click',function(){sendReport('jour');});
+  $('#mailWeek').addEventListener('click',function(){sendReport('semaine');});
+  $('#mailMonth').addEventListener('click',function(){sendReport('mois');});
+  // Rappel quotidien : bilan de la VEILLE à la première ouverture d'un nouveau jour
+  function dailyReminder(){
+    if(!load(LS_RREMIND,false))return;
+    if(!(currentUser&&currentUser.role==='gerant'))return;
+    var today=todayKey();
+    if(load(LS_RLAST,'')===today)return;
+    save(LS_RLAST,today);
+    // bilan d'hier
+    var y=new Date();y.setDate(y.getDate()-1);
+    var filt=function(s){return sameDay(s.ts,y.getTime());};
+    if(!sales.some(filt))return; // rien hier
+    var ylabel='hier ('+FR_DAYS[y.getDay()]+' '+y.getDate()+' '+FR_MONTHS[y.getMonth()]+')';
+    setTimeout(function(){
+      uiConfirm('📧 Nouveau jour. Envoyer le bilan d\'hier par email ?',function(){
+        sendReport('jour',filt,ylabel);
+      });
+    },1200);
+  }
+
+  // ---- INIT ----
+  renderCats();renderProducts();renderCart();updateStaffUI();
+  runClosures(); // clôture les journées / mois / années terminés
+  loadShopForm();
+  // Ouverture : connexion (ou première configuration si aucun employé)
+  setInert(true);
+  showLogin();
+  // init des listes réglages quand on ouvre l'onglet
+  document.querySelector('.tab[data-view="reglages"]').addEventListener('click',function(){renderEmpList();loadShopForm();showIntegrity();renderInstallStatus();});
+}
+</script>
+<script>
+// ---- Démarrage : restauration automatique depuis la copie de secours si besoin ----
+(function(){
+  var started=false;function go(){if(started)return;started=true;startApp();}
+  var hasLocal=true;
+  try{hasLocal=!!(localStorage.getItem('epicerie_emp_v1')||localStorage.getItem('epicerie_sales_v1'));}catch(e){}
+  if(hasLocal){go();return;}
+  setTimeout(go,2500); // ne jamais bloquer le démarrage
+  MPStore.getAll(function(map){
+    if(map&&(map['epicerie_sales_v1']||map['epicerie_emp_v1'])){
+      try{Object.keys(map).forEach(function(k){localStorage.setItem(k,map[k]);});window.__mpRestored=true;}catch(e){}
+    }
+    go();
+  });
+})();
+// ---- Application installable : fonctionnement hors ligne ----
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+  try{navigator.serviceWorker.register('sw.js').catch(function(){});}catch(e){}
+}
+</script>
+</body>
+</html>
