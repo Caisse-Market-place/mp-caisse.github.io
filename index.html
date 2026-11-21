@@ -537,7 +537,7 @@
         <div id="integrityStatus" class="insight" style="margin-bottom:12px">Intégrité non vérifiée.</div>
         <div class="rg-actions">
           <button class="rg-btn" id="verifyBtn">Vérifier l'intégrité</button>
-          <button class="rg-btn sec" id="archiveBtn">Exporter l'archive fiscale</button>
+          <button class="rg-btn sec" id="archiveBtn" style="display:none">Exporter l'archive fiscale</button><!-- masqué à la demande du fondateur (simplification) -->
           <button class="rg-btn sec" id="showClotBtn">Clôtures (tickets Z)</button>
           <button class="rg-btn sec" id="showJetBtn">Journal des événements</button>
         </div>
@@ -669,6 +669,7 @@ window.MPStore=(function(){
     });});
   }
   api.disable=function(){disabled=true;api.ok=false;};
+  api.isDisabled=function(){return disabled;};
   api.set=function(k,v){return tx('readwrite',function(st){st.put(v,k);}).catch(function(e){api.ok=false;api.lastError=e;throw e;});};
   api.del=function(k){return tx('readwrite',function(st){st.delete(k);});};
   api.getAll=function(cb){
@@ -689,13 +690,90 @@ function startApp(){
   var MEM=window.__MEM||{};
   function load(k,def){var v=MEM[k];if(v==null)return def;try{return JSON.parse(v);}catch(e){return def;}}
   var storageWarned=false;
-  function storageAlert(){setTimeout(function(){uiAlert('⚠️ ENREGISTREMENT IMPOSSIBLE\n\nLa mémoire de l\'appareil est pleine ou bloquée : la dernière opération risque d\'être perdue au redémarrage.\n\nExportez tout de suite une sauvegarde et l\'archive fiscale (Réglages), puis contactez le support.');},0);}
+  function storageAlert(){setTimeout(function(){uiAlert('⚠️ ENREGISTREMENT IMPOSSIBLE\n\nLa mémoire de l\'appareil est pleine ou bloquée : la dernière opération risque d\'être perdue au redémarrage.\n\nExportez tout de suite une sauvegarde (Réglages), puis contactez le support.');},0);}
   function save(k,val){
     var str=JSON.stringify(val);MEM[k]=str;
     var lsOk=true;
     try{localStorage.setItem(k,str);}catch(e){lsOk=false;try{localStorage.removeItem(k);}catch(e2){}} // jamais de copie périmée
     // base de l'appareil = stockage principal ; alerte seulement si AUCUN des deux n'a pu enregistrer
     MPStore.set(k,str).catch(function(){if(!lsOk)storageAlert();});
+  }
+  // Ventes rangées par paquets de 500 (clés epicerie_sales_v1@0000, @0001…) : un ticket ne réécrit
+  // que son paquet, quelle que soit la taille de l'historique.
+  // - repère epicerie_salesmeta_v1 {fmt,n,hash} : nombre de ventes et dernière empreinte, écrit à chaque vente ;
+  // - la copie localStorage ne garde que le paquet en cours (les paquets pleins sont dans la base de l'appareil) ;
+  // - au moindre trou ou incohérence : ANOMALIE, encaissement bloqué (jamais de numéro réutilisé ni d'écrasement).
+  var SALES_CHUNK=500, SALES_PFX=LS_SALES+'@', LS_SMETA='epicerie_salesmeta_v1', RX_CHUNK=/^epicerie_sales_v1@\d{4}$/;
+  // anomalie = données manquantes → encaissement bloqué ; avertissement = copie de secours divergente ou clé parasite,
+  // corrigée automatiquement (la base de l'appareil fait foi), inscrite au journal et signalée au gérant
+  var storageAnomaly=null, storageWarning=window.__mpConflicts&&window.__mpConflicts.length?'copie de secours différente de la base de l\'appareil (remplacée) : '+window.__mpConflicts.join(', '):null;
+  function chunkKey(n){return SALES_PFX+String(n).padStart(4,'0');}
+  function saveIdbOnly(k,val){ // gros paquet plein : base de l'appareil seulement (n'encombre pas la copie de secours)
+    if(MPStore.isDisabled())return save(k,val); // base indisponible : localStorage est le seul stockage, on garde tout
+    var str=JSON.stringify(val);MEM[k]=str;
+    // la copie de secours n'est retirée qu'une fois l'écriture confirmée par la base de l'appareil
+    MPStore.set(k,str).then(function(){try{localStorage.removeItem(k);}catch(e){}},function(){try{localStorage.setItem(k,str);}catch(e){}storageAlert();});
+  }
+  function saveSalesMeta(arr){var l=arr[arr.length-1];save(LS_SMETA,{fmt:'paquets',n:arr.length,hash:l?l.hash:null});}
+  var salesLegacyMode=false; // ancienne clé unique conservée (base indisponible : pas de migration possible)
+  function saveSalesFrom(arr,fromIdx,noMeta){
+    if(salesLegacyMode){save(LS_SALES,arr);return;}
+    var last=Math.max(0,Math.ceil(arr.length/SALES_CHUNK)-1);
+    // à l'ouverture d'un nouveau paquet, on réécrit aussi le précédent (s'il avait échoué, il est réparé)
+    var c0=Math.floor(Math.max(0,fromIdx)/SALES_CHUNK);if(fromIdx>0&&fromIdx%SALES_CHUNK===0)c0--;
+    for(var c=c0;c<=last&&c*SALES_CHUNK<arr.length;c++){
+      var part=arr.slice(c*SALES_CHUNK,(c+1)*SALES_CHUNK);
+      if(c<last)saveIdbOnly(chunkKey(c),part);else save(chunkKey(c),part);
+    }
+    if(fromIdx===0){ // réécriture complète : on retire les paquets en trop
+      Object.keys(MEM).forEach(function(k){if(k.indexOf(SALES_PFX)===0){var i=parseInt(k.slice(SALES_PFX.length),10);if(!(RX_CHUNK.test(k)&&i<=last&&arr.length)){delete MEM[k];try{localStorage.removeItem(k);}catch(e){}MPStore.del(k).catch(function(){});}}});
+    }
+    if(!noMeta)saveSalesMeta(arr);
+  }
+  function loadSales(){
+    var out=[],probs=[],c=0,nChunks=0;
+    var known=Object.keys(MEM).filter(function(k){return k.indexOf(SALES_PFX)===0;});
+    known.forEach(function(k){if(!RX_CHUNK.test(k)){storageWarning=(storageWarning?storageWarning+' ; ':'')+'clé inattendue « '+k.slice(0,60)+' » (retirée)';delete MEM[k];try{localStorage.removeItem(k);}catch(e){}MPStore.del(k).catch(function(){});}});
+    known=known.filter(function(k){return RX_CHUNK.test(k);});
+    while(MEM[chunkKey(c)]!=null){
+      var part=load(chunkKey(c),null);
+      if(!Array.isArray(part)){probs.push('paquet '+c+' illisible');break;}
+      if(part.length>SALES_CHUNK){probs.push('paquet '+c+' trop long');break;}
+      out=out.concat(part);nChunks=c+1;
+      if(part.length<SALES_CHUNK){c++;break;}
+      c++;
+    }
+    var iso=known.filter(function(k){return RX_CHUNK.test(k)&&parseInt(k.slice(SALES_PFX.length),10)>=nChunks;});
+    if(iso.length)probs.push(iso.length+' paquet(s) de ventes au-delà d\'un paquet manquant ou incomplet (n° '+nChunks+')');
+    var meta=load(LS_SMETA,null), legacy=load(LS_SALES,null);
+    if(Array.isArray(legacy)){
+      var isPrefix=function(a,b){for(var i=0;i<a.length;i++){if(!b[i]||a[i].hash!==b[i].hash)return false;}return true;};
+      var mN=meta?meta.n:0;
+      if(legacy.length>out.length){
+        // migration (éventuellement reprise après une interruption) : les paquets doivent être exactement le début de l'ancienne copie
+        if((!out.length||isPrefix(out,legacy))&&legacy.length>=mN){
+          out=legacy;
+          if(MPStore.isDisabled())salesLegacyMode=true; // sans base de l'appareil : on reste à l'ancien format, rien n'est retiré
+          else saveSalesFrom(out,0,true);
+        }else probs.push('ancienne copie et paquets différents');
+      }
+      if(!probs.length&&!salesLegacyMode&&!MPStore.isDisabled()){
+        // repère écrit et ancienne copie retirée UNIQUEMENT après confirmation de TOUS les paquets par la base de l'appareil
+        var ps=[],snap=out.slice();for(var k=0;k*SALES_CHUNK<out.length;k++)ps.push(MPStore.set(chunkKey(k),MEM[chunkKey(k)]));
+        Promise.all(ps).then(function(){if(sales.length>=snap.length)saveSalesMeta(sales);delete MEM[LS_SALES];try{localStorage.removeItem(LS_SALES);}catch(e){}return MPStore.del(LS_SALES);}).catch(function(){});
+      }
+    }
+    if(meta&&meta.n>out.length)probs.push(meta.n+' ventes attendues, '+out.length+' trouvées');
+    if(meta&&meta.n===out.length&&out.length&&meta.hash&&out[out.length-1].hash!==meta.hash)probs.push('dernière vente différente du repère');
+    var cl=load(LS_CLOT,[])||[],maxT=0;cl.forEach(function(x){if(x&&x.lastTicket>maxT)maxT=x.lastTicket;});
+    if(maxT>out.length)probs.push('la clôture va jusqu\'au ticket '+maxT+', '+out.length+' ventes trouvées');
+    if(probs.length)storageAnomaly=(storageAnomaly?storageAnomaly+' ; ':'')+probs.join(' ; ');
+    return out;
+  }
+  function anomalyBlock(){
+    if(!storageAnomaly)return false;
+    uiAlert('⚠️ ANOMALIE DE STOCKAGE — encaissement bloqué\n\n'+storageAnomaly+'\n\nPour ne rien écraser ni réutiliser de numéro de ticket, la caisse refuse d\'enregistrer.\n\n1. Ne videz PAS les données du navigateur.\n2. Fermez complètement la caisse puis rouvrez-la (la base de l\'appareil peut répondre au 2e essai).\n3. Si le message revient : gérant → Réglages → Exporter une sauvegarde, puis contactez le support.');
+    return true;
   }
   function eur(n){return (Math.round(n*100)/100).toFixed(2).replace('.',',')+' €';}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -744,7 +822,7 @@ function startApp(){
     obj.seq=last?last.seq+1:1;
     obj.prev=last?last.hash:GENESIS;
     obj.hash=sha256(JSON.stringify(obj));
-    arr.push(obj);if(lsKey)save(lsKey,arr);
+    arr.push(obj);if(lsKey===LS_SALES)saveSalesFrom(arr,arr.length-1);else if(lsKey)save(lsKey,arr);
     return obj;
   }
   // Vérifie une chaîne : numéros continus, lien avec le précédent, empreinte intacte
@@ -804,7 +882,31 @@ function startApp(){
 
   var products=load(LS_PROD,null);
   if(products===null){products=defaultProducts; save(LS_PROD,products);}
-  var sales=load(LS_SALES,[]);
+  // Historique des prix de touche par produit : [[date, prix], …] (hors tickets scellés : corrigeable, pas dans l'archive fiscale)
+  // Sert à calculer le bénéfice avec le prix de touche en vigueur le jour de chaque vente.
+  var LS_COSTH='epicerie_costhist_v1';
+  var costHist=cleanCostHist(load(LS_COSTH,null));
+  function cleanCostHist(o){
+    var out=Object.create(null);if(!o||typeof o!=='object'||Array.isArray(o))return out;
+    Object.keys(o).slice(0,20000).forEach(function(k){
+      if(!/^[A-Za-z0-9]{1,40}$/.test(k)||!Array.isArray(o[k]))return;
+      var h=o[k].filter(function(e){return Array.isArray(e)&&e.length===2&&typeof e[0]==='number'&&isFinite(e[0])&&e[0]>=0&&(e[1]===null||(typeof e[1]==='number'&&isFinite(e[1])&&e[1]>=0&&e[1]<=100000));}).sort(function(x,y){return x[0]-y[0];}).slice(-1000);
+      if(h.length)out[k]=h;
+    });
+    return out;
+  }
+  function recordCosts(){
+    var ch=false,now=Date.now();
+    products.forEach(function(p){
+      var h=costHist[p.id],c=p.cost!=null?p.cost:null;
+      if(!h){costHist[p.id]=[[0,c]];ch=true;return;} // 1re fois : vaut pour tout le passé
+      if(h[h.length-1][1]!==c){h.push([now,c]);ch=true;}
+    });
+    if(ch)save(LS_COSTH,costHist);
+  }
+  function costAt(pid,ts){var h=pid&&costHist[pid],c=null;if(!h)return null;for(var i=0;i<h.length;i++){if(h[i][0]<=ts)c=h[i][1];else break;}return c;}
+  recordCosts();
+  var sales=loadSales();
   var employees=load(LS_EMP,[]);
   var currentUser=null;
   // Codes PIN : jamais stockés en clair (empreinte salée, répétée)
@@ -823,11 +925,13 @@ function startApp(){
       chainAppend(out,{id:s.id,type:'vente',ts:s.ts,employee:s.employee,payment:s.payment||'espece',total:s.total,received:s.received,
         staff:!!s.staff,discount:s.discount||0,staffBy:s.staffBy||null,items:items,tvaDetail:tvaBreak(items),reprise:true},null);
     });
-    save(LS_SALES,out);
+    saveSalesFrom(out,0);
     return out;
   }
   if(sales.length&&!sales[0].hash){var nOld=sales.length;sales=migrateLegacySales(sales);logEvent('REPRISE_HISTORIQUE',nOld+' ventes antérieures numérotées et chaînées');}
   if(!jet.length)logEvent('INITIALISATION','Journal des événements ouvert');
+  if(storageAnomaly)logEvent('ANOMALIE_STOCKAGE',storageAnomaly);
+  if(storageWarning)logEvent('CONFLIT_STOCKAGE',storageWarning);
   if(window.__mpRestored)logEvent('RESTAURATION_AUTO','Données restaurées depuis la copie de secours de l\'appareil');
   var cart=[]; // {id,name,price,qty}
   var activeCat="Tout", search="";
@@ -1122,7 +1226,7 @@ function startApp(){
       if(currentUser&&currentUser.role==='gerant'){
         var del=el('button','icon-btn del');del.textContent='🗑';del.title='Supprimer';
         del.addEventListener('click',function(){
-          uiConfirm('Supprimer « '+p.name+' » ?',function(){logEvent('PRODUIT_SUPPRIME',p.name);products=products.filter(function(x){return x.id!==p.id;});save(LS_PROD,products);renderProdList();renderCats();renderProducts();});
+          uiConfirm('Supprimer « '+p.name+' » ?',function(){logEvent('PRODUIT_SUPPRIME',p.name);products=products.filter(function(x){return x.id!==p.id;});save(LS_PROD,products);recordCosts();renderProdList();renderCats();renderProducts();});
         });
         row.appendChild(del);
       }
@@ -1197,7 +1301,7 @@ function startApp(){
       else{ np.pending=true; np.tva=20; np.elig=false; } // à valider par le gérant : TVA 20 %, pas de remise
       products.push(np);logEvent('PRODUIT_AJOUTE',name+' '+eur(price));
     }
-    save(LS_PROD,products);resetForm();renderProdList();renderCats();renderProducts();
+    save(LS_PROD,products);recordCosts();resetForm();renderProdList();renderCats();renderProducts();
     // produit créé depuis un scan inconnu : retour à la caisse et ajout au ticket
     if(created&&scanAddCode&&created.barcode===scanAddCode){
       endScanAdd();
@@ -1283,6 +1387,7 @@ function startApp(){
   });
   function finalizeSale(tot,v){
     if(!cart.length||!currentUser){closePay();return;} // jamais de ticket vide ni sans caissier
+    if(anomalyBlock()){closePay();return;}
     var disc=cartDiscount();
     var stAlloc=computeStaff();
     var saleItems=[];
@@ -1412,6 +1517,7 @@ function startApp(){
   }
   // Clôture automatiquement toute période TERMINÉE qui contient des ventes (rien n'est effacé)
   function runClosures(){
+    if(storageAnomaly)return 0; // ventes incomplètes : aucune clôture ne doit être scellée sur des chiffres faux
     var done={};clotures.forEach(function(c){done[c.kind+c.period]=1;});
     var now=Date.now(),created=0;
     ['J','M','A'].forEach(function(kind){
@@ -1449,6 +1555,7 @@ function startApp(){
     if(!currentUser||currentUser.role!=='gerant'){uiAlert('Seul le gérant peut annuler un ticket.');return;}
     if(s.type==='annulation'){uiAlert('Ce ticket est déjà une annulation.');return;}
     if(cancelOf(s.seq)){uiAlert('Ce ticket a déjà été annulé.');return;}
+    if(anomalyBlock())return;
     uiChoice('Annuler le ticket N° '+seqLabel(s.seq)+' ('+eur(s.total)+') ?\n\nUn ticket d\'annulation (montant négatif) sera enregistré. Le ticket d\'origine reste conservé.\n\nMotif :',
       ['Erreur de saisie','Retour produit','Client a renoncé','Autre'],function(motif){
       if(cancelOf(s.seq)){uiAlert('Ce ticket a déjà été annulé.');return;}
@@ -1687,18 +1794,28 @@ function startApp(){
     $('#anaScope').textContent='Période : '+anaScopeLabel();
     var list=sales.filter(function(s){return anaInPeriod(s.ts);});
     // agrégats produits
-    var pq={},pc={},catQ={},catC={},hourC={},tot=0,artTot=0;
+    var pq={},pc={},catQ={},catC={},hourC={},tot=0,artTot=0,nameCat={};
+    // prix de touche : celui enregistré dans la vente ; pour les ventes plus anciennes, celui du produit actuel
+    var costById=Object.create(null),costByNm=Object.create(null);products.forEach(function(p){if(p.cost!=null){costById[p.id]=p.cost;costByNm[p.name]=p.cost;}});
+    var kCost=Object.create(null),kRev=Object.create(null),kQty=Object.create(null),noCost=Object.create(null);
+    function saleTs(s){if(s.type==='annulation'){var o=sales[s.ref-1];if(o&&o.seq===s.ref)return o.ts;}return s.ts;}
     list.forEach(function(s){
       tot+=s.total;
       s.items.forEach(function(i){
         pq[i.name]=(pq[i.name]||0)+i.qty;
         pc[i.name]=(pc[i.name]||0)+i.price*i.qty;
         artTot+=i.qty;
+        if(i.cat&&!nameCat[i.name])nameCat[i.name]=i.cat;
+        var c=costAt(i.pid,saleTs(s)); // prix de touche en vigueur le jour de la vente (pour une annulation : celui de la vente annulée)
+        if(c==null)c=(i.pid&&costById[i.pid]!=null)?costById[i.pid]:costByNm[i.name]; // inconnu à l'époque : prix actuel
+        if(c==null){noCost[i.name]=(noCost[i.name]||0)+i.qty;return;}
+        kCost[i.name]=(kCost[i.name]||0)+c*i.qty;kRev[i.name]=(kRev[i.name]||0)+i.price*i.qty;kQty[i.name]=(kQty[i.name]||0)+i.qty;
       });
       var h=new Date(s.ts).getHours();hourC[h]=(hourC[h]||0)+s.total;
     });
     // rayon via table produit->cat
     var catOf={};products.forEach(function(p){catOf[p.name]=p.cat||'Divers';});
+    Object.keys(nameCat).forEach(function(n){if(!catOf[n])catOf[n]=nameCat[n];}); // article supprimé ou renommé : rayon du ticket
     Object.keys(pq).forEach(function(nm){var c=catOf[nm]||'Divers';catQ[c]=(catQ[c]||0)+pq[nm];catC[c]=(catC[c]||0)+pc[nm];});
 
     // ---- INSIGHTS ----
@@ -1753,13 +1870,13 @@ function startApp(){
     $('#anaCats').innerHTML=ch;
 
     // ---- RENTABILITÉ (bénéfice exact) ----
-    var costByName={};products.forEach(function(p){if(p.cost!=null)costByName[p.name]=p.cost;});
-    var benefRows=[], totBenef=0, caCosted=0, missing=0, soldNames=Object.keys(pq);
-    soldNames.forEach(function(nm){
-      if(costByName[nm]==null){missing++;return;}
-      var revenue=pc[nm], cost=costByName[nm]*pq[nm], benef=revenue-cost;
+    var benefRows=[], totBenef=0, caCosted=0, soldNames=Object.keys(pq);
+    var missing=Object.keys(noCost).filter(function(n){return noCost[n]!==0;}).length; // quantité nette non chiffrée
+    Object.keys(kCost).forEach(function(nm){
+      var revenue=kRev[nm], benef=revenue-kCost[nm];
+      if(!kQty[nm]&&Math.abs(revenue)<0.005)return; // vendu puis entièrement annulé
       totBenef+=benef;caCosted+=revenue;
-      benefRows.push({nm:nm,benef:benef,qty:pq[nm],marge:revenue>0?benef/revenue*100:0});
+      benefRows.push({nm:nm,benef:benef,qty:kQty[nm],marge:revenue>0?benef/revenue*100:0});
     });
     var pf=$('#anaProfit');
     if(!soldNames.length){pf.innerHTML='<div style="color:var(--muted);font-size:13px">Aucune vente.</div>';}
@@ -1825,7 +1942,7 @@ function startApp(){
           else{var c=parseFloat(v.replace(',','.'));if(!isNaN(c)&&c>=0)p.cost=Math.round(c*100)/100;}
         }});
       });
-      save(LS_PROD,products);renderAnalyse();flashScan('✓ Prix de touche enregistrés');
+      save(LS_PROD,products);recordCosts();renderAnalyse();flashScan('✓ Prix de touche enregistrés');
     });
   }
   // Étude d'un produit : meilleur jour de la semaine + évolution (tout l'historique)
@@ -2061,7 +2178,7 @@ function startApp(){
         var n=el('span');n.textContent=x.name;var pr=el('span');pr.textContent=eur(x.price);b.appendChild(n);b.appendChild(pr);
         b.addEventListener('click',function(){
           if(products.some(function(y){return y.barcode===code;})){ov.remove();uiAlert('Ce code-barres vient d\'être attribué à un autre produit.');return;}
-          x.barcode=code;save(LS_PROD,products);logEvent('CODE_BARRES_ASSOCIE',x.name+' ← '+code);
+          x.barcode=code;save(LS_PROD,products);recordCosts();logEvent('CODE_BARRES_ASSOCIE',x.name+' ← '+code);
           ov.remove();document.querySelector('.tab[data-view="caisse"]').click();
           addToCart(x);addScanFeed(true,x.name,x.price);flashScan('✓ Code enregistré pour '+x.name+' — ajouté au ticket');
         });
@@ -2105,16 +2222,18 @@ function startApp(){
     clearTimeout(flashEl._t);flashEl._t=setTimeout(function(){flashEl.style.display='none';},1800);
   }
   // Scannette = clavier rapide terminé par Entrée
-  var scanBuf="", scanLast=0;
+  var scanBuf="", scanLast=0, scanFirst=0;
   document.addEventListener('keydown',function(e){
     if($('#login').classList.contains('show'))return; // pas pendant la connexion
     var now=Date.now();
-    if(now-scanLast>80) scanBuf="";
+    if(now-scanLast>250) scanBuf=""; // une scannette envoie ses chiffres en quelques ms ; 250 ms tolère un court gel de la tablette
     scanLast=now;
     if(e.key==='Enter'){
       var tg=e.target, tid=tg&&tg.id;
       var inField=tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.tagName==='SELECT');
-      if(scanBuf.length>=3){
+      // scannette = caractères très rapprochés (moins de 60 ms en moyenne) ; une frappe humaine rapide n'est pas un scan
+      var fast=(now-scanFirst)/Math.max(1,scanBuf.length-1)<=60;
+      if(scanBuf.length>=3&&fast){
         e.preventDefault();
         if(tid==='fBarcode'){ tg.value=scanBuf; /* scan dans la fiche produit : on garde le code lu (même si le clavier a tapé d'autres symboles) */ }
         else if(inField&&tid!=='search'){ /* autre champ (nom, code PIN, chat…) : on n'encaisse pas */ }
@@ -2130,7 +2249,7 @@ function startApp(){
     }
     var dm=/^(?:Digit|Numpad)(\d)$/.exec(e.code||'');
     var ch=dm?dm[1]:((e.key&&e.key.length===1&&/[0-9A-Za-z]/.test(e.key))?e.key:'');
-    if(ch){ scanBuf+=ch; }
+    if(ch){ if(!scanBuf)scanFirst=now; scanBuf+=ch; }
   });
   // Scan caméra
   var scanStream=null, scanRun=false;
@@ -2303,6 +2422,8 @@ function startApp(){
     $('#login').classList.add('show');
   }
   function applyUser(){
+    if(storageAnomaly)setTimeout(anomalyBlock,400);
+    else if(storageWarning&&currentUser.role==='gerant'){var w=storageWarning;storageWarning=null;setTimeout(function(){uiAlert('⚠️ Contrôle du stockage\n\n'+w+'\n\nLes ventes de la base de l\'appareil ont été conservées et la caisse fonctionne normalement. Cet événement est inscrit au journal. S\'il se répète, contactez le support.');},400);}
     runClosures(); // journée terminée pendant que la caisse restait allumée
     // chip
     setInert(false);
@@ -2382,7 +2503,7 @@ function startApp(){
   var LS_AUTOBK='epicerie_autobackup_v1';
   function fullBackup(auto){
     download('marketplace_sauvegarde_'+(auto?'auto_':'')+dKey(Date.now())+'.json',
-      {version:2,date:new Date().toISOString(),shop:shop,products:products,employees:employees,sales:sales,clotures:clotures,jet:jet,prints:printsMap()});
+      {version:2,date:new Date().toISOString(),shop:shop,products:products,employees:employees,sales:sales,clotures:clotures,jet:jet,prints:printsMap(),costHist:costHist});
     try{localStorage.setItem('epicerie_backup_v1',String(Date.now()));}catch(e){}
     logEvent(auto?'SAUVEGARDE_AUTO':'SAUVEGARDE_EXPORTEE',sales.length+' ventes');
   }
@@ -2443,7 +2564,7 @@ function startApp(){
         if(c.price!=null){logEvent('PRIX_MODIFIE',p.name+' : '+eur(p.price)+' → '+eur(c.price)+' (import)');p.price=c.price;}
         if(c.cost!=null)p.cost=c.cost;if(c.cat)p.cat=c.cat;if(c.barcode)p.barcode=c.barcode;}
     });
-    save(LS_PROD,products);
+    save(LS_PROD,products);recordCosts();
     logEvent('IMPORT_CATALOGUE','fusion — '+plan.added+' ajouté(s), '+plan.updated+' mis à jour');
   }
   $('#importFile').addEventListener('change',function(e){
@@ -2458,6 +2579,7 @@ function startApp(){
       // Fichier catalogue seul (ex. produits relevés sur photos), ou caisse qui a déjà des ventes :
       // on n'importe QUE des produits (les ventes ne peuvent jamais être remplacées)
       var catalogueOnly=!data.employees&&!data.sales;
+      if(!catalogueOnly&&anomalyBlock())return;
       if(sales.length||catalogueOnly){
         var cat;
         try{cat=cleanProducts(data.products||[]);}catch(err){uiAlert('Catalogue refusé : '+err.message+' invalide.');return;}
@@ -2467,7 +2589,7 @@ function startApp(){
           ['Ajouter et mettre à jour (recommandé)','Remplacer tout le catalogue'],function(choice){
           if(choice.indexOf('Remplacer')===0){
             uiConfirm('Remplacer TOUT le catalogue par ces '+cat.length+' produits ?\nLes produits absents du fichier seront retirés de la caisse (les ventes passées ne changent pas).',function(){
-              products=cat;save(LS_PROD,products);logEvent('IMPORT_CATALOGUE','remplacement — '+products.length+' produits');
+              products=cat;save(LS_PROD,products);recordCosts();logEvent('IMPORT_CATALOGUE','remplacement — '+products.length+' produits');
               renderCats();renderProducts();renderProdList();uiAlert('Catalogue remplacé : '+products.length+' produits.');
             });
           }else{
@@ -2499,10 +2621,10 @@ function startApp(){
       if(lastS&&!legacy)msg+='\n\nDernier ticket : N° '+seqLabel(lastS.seq)+'\nGrand total : '+eur(r2(gt))+'\nEmpreinte : '+lastS.hash.slice(0,16)+'\n\nComparez avec votre dernier ticket Z papier avant de valider.';
       if(legacy)msg+='\n\n⚠️ Ces ventes ne sont pas scellées (ancien format) : elles seront numérotées maintenant et ce sera inscrit au journal.';
       uiConfirm(msg,function(){
-        products=cProd;employees=cEmp;save(LS_PROD,products);save(LS_EMP,employees);
+        products=cProd;employees=cEmp;costHist=cleanCostHist(data.costHist);save(LS_PROD,products);recordCosts();save(LS_EMP,employees);
         var cs=cleanShop(data.shop);if(cs){shop=cs;save(LS_SHOP,shop);}
         if(legacy){sales=migrateLegacySales(inSales);logEvent('REPRISE_HISTORIQUE_IMPORT',inSales.length+' ventes non scellées importées et numérotées');}
-        else{sales=inSales;save(LS_SALES,sales);}
+        else{sales=inSales;saveSalesFrom(sales,0);}
         if(cClot.length){clotures=cClot;save(LS_CLOT,clotures);}
         if(cJet.length){var orig=load(LS_JET_ORIG,[])||[];orig.push({importe:Date.now(),journal:cJet});save(LS_JET_ORIG,orig);}
         save(LS_PRINTS,cleanPrints(data.prints));
@@ -2517,7 +2639,8 @@ function startApp(){
   });
   $('#wipeBtn').addEventListener('click',function(){
     if(!requireGerant())return;
-    if(sales.length){uiAlert('Impossible : '+sales.length+' vente(s) sont enregistrées.\n\nLa loi anti-fraude TVA interdit d\'effacer les ventes. Elles doivent être conservées 6 ans.\nPour arrêter d\'utiliser cette caisse, exportez l\'archive fiscale.');return;}
+    if(anomalyBlock())return;
+    if(sales.length){uiAlert('Impossible : '+sales.length+' vente(s) sont enregistrées.\n\nLa loi anti-fraude TVA interdit d\'effacer les ventes. Elles doivent être conservées 6 ans.\nPour arrêter d\'utiliser cette caisse, exportez une sauvegarde (Réglages) et conservez-la.');return;}
     uiConfirm('⚠️ Remettre la caisse à zéro (produits et employés) ?',function(){
       try{localStorage.removeItem(LS_PROD);localStorage.removeItem(LS_EMP);}catch(e){}
       Promise.all([MPStore.del(LS_PROD),MPStore.del(LS_EMP)]).catch(function(){}).then(function(){location.reload();});
@@ -2536,7 +2659,8 @@ function startApp(){
 
   // ---- CONFORMITÉ : vérification, archive, clôtures, journal ----
   function integrityReport(){
-    return {ventes:verifyChain(sales),clotures:verifyChain(clotures),journal:verifyChain(jet)};
+    var v=verifyChain(sales);if(v.ok&&storageAnomaly)v={ok:false,at:sales.length+1,why:storageAnomaly};
+    return {ventes:v,clotures:verifyChain(clotures),journal:verifyChain(jet)};
   }
   function showIntegrity(){
     var r=integrityReport(),ok=r.ventes.ok&&r.clotures.ok&&r.journal.ok;
@@ -2677,7 +2801,21 @@ function startApp(){
   var CHAINED=['epicerie_sales_v1','epicerie_jet_v1','epicerie_clot_v1'];
   var started=false;
   function lsAll(){var o={};try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('epicerie_')===0)o[k]=localStorage.getItem(k);}}catch(e){}return o;}
-  function len(s){try{var a=JSON.parse(s);return Array.isArray(a)?a.length:-1;}catch(e){return -1;}}
+  function arr(s){try{var a=JSON.parse(s);return Array.isArray(a)?a:null;}catch(e){return null;}}
+  function isChunk(k){return k.indexOf('epicerie_sales_v1@')===0;}
+  function metaN(s){try{return JSON.parse(s).n||0;}catch(e){return -1;}}
+  // Listes chaînées : la plus longue ne gagne QUE si elle prolonge exactement l'autre (mêmes empreintes) ;
+  // sinon c'est un conflit : on garde la base de l'appareil et la caisse signale l'anomalie.
+  window.__mpConflicts=[];
+  function conflict(k){window.__mpConflicts.push(k);try{localStorage.removeItem(k);}catch(e){}} // la copie divergente est retirée
+  function chained(k,a,b){
+    if(a===b)return b;
+    var A=arr(a),B=arr(b);
+    if(!A)return b;if(!B){conflict(k);return b;}
+    var S=A.length<=B.length?A:B,L=S===A?B:A;
+    for(var i=0;i<S.length;i++){if(!L[i]||!S[i]||S[i].hash!==L[i].hash){conflict(k);return b;}}
+    return L===A?a:b;
+  }
   function launch(mem){if(started)return;started=true;window.__MEM=mem;startApp();}
   var ls=lsAll();
   if(!MPStore.ok){launch(ls);return;}
@@ -2690,13 +2828,15 @@ function startApp(){
     Object.keys(keys).forEach(function(k){
       var a=ls[k],b=db[k],pick;
       if(a==null)pick=b;else if(b==null)pick=a;
-      else if(CHAINED.indexOf(k)>=0)pick=len(b)>=len(a)?b:a; // la version la plus longue gagne (jamais de ventes perdues)
+      else if(CHAINED.indexOf(k)>=0||isChunk(k))pick=chained(k,a,b);
+      else if(k==='epicerie_salesmeta_v1'){pick=b;var dn=metaN(a)-metaN(b);if(dn<0||dn>5)conflict(k);} // la base de l'appareil fait foi ; un petit retard d'écriture (coupure) est normal, un autre écart est signalé
       else pick=b;
       mem[k]=pick;
       if(pick!==b)MPStore.set(k,pick).catch(function(){});
-      if(pick!==a){try{localStorage.setItem(k,pick);}catch(e){try{localStorage.removeItem(k);}catch(e2){}}}
+      if(pick!==a&&!isChunk(k)){try{localStorage.setItem(k,pick);}catch(e){try{localStorage.removeItem(k);}catch(e2){}}}
     });
-    if(!ls['epicerie_sales_v1']&&!ls['epicerie_emp_v1']&&(db['epicerie_sales_v1']||db['epicerie_emp_v1']))window.__mpRestored=true;
+    var hasSales=function(o){return Object.keys(o).some(function(k){return k.indexOf('epicerie_sales_v1')===0;});};
+    if(!hasSales(ls)&&!ls['epicerie_emp_v1']&&(hasSales(db)||db['epicerie_emp_v1']))window.__mpRestored=true;
     launch(mem);
   });
 })();

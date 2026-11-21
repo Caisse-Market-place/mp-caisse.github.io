@@ -1,7 +1,7 @@
 // Service worker : permet à la caisse de démarrer sans Internet.
 // Les VENTES ne passent jamais ici : elles restent sur l'appareil (localStorage + IndexedDB).
 // Changer CACHE à chaque nouvelle version publiée.
-var CACHE = 'caisse-mp-v5';
+var CACHE = 'caisse-mp-v6';
 var FILES = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 var NET_TIMEOUT = 3000;
 
